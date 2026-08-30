@@ -96,8 +96,14 @@ function updateBackBtn() {
 function populateSemesterSelect() {
     const sel = document.getElementById('semesterSelect');
     if (!sel || !CONFIG || !CONFIG.SEMESTERS) return;
-    const keys = Object.keys(CONFIG.SEMESTERS);
+    
     sel.innerHTML = '';
+
+    // 取得所有 key，過濾掉 homerooms、csv 等非學期的屬性名稱
+    const keys = Object.keys(CONFIG.SEMESTERS).filter(key => 
+        key !== 'homerooms' && key !== 'csv'
+    );
+
     keys.forEach((label, i) => {
         const opt = document.createElement('option');
         opt.value       = label;
@@ -106,7 +112,6 @@ function populateSemesterSelect() {
         sel.appendChild(opt);
     });
 }
-
 /* ═══════════════════════════════════════════════════════════
    登入查詢 (簡化版：無須帳號密碼，直接讀取)
 ═══════════════════════════════════════════════════════════ */
