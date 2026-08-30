@@ -1,7 +1,7 @@
 /**
  * ============================================================
  *  課表查詢系統 - 應用程式邏輯 (app.js)
- *  嘉義國中 國中部
+ *  民雄國中
  * ============================================================
  */
 
@@ -145,15 +145,22 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 });
 
 /* ═══════════════════════════════════════════════════════════
-   CSV 載入與解析 (併入 locked_courses.json 讀取)
+   CSV 與 JSON 載入與解析
 ═══════════════════════════════════════════════════════════ */
 async function fetchAndParseCSV(semLabel) {
     if (loadingOverlay) loadingOverlay.classList.add('show');
 
-    let csvUrl = './teacher_timetable_matrix.csv';
+    let csvUrl = './teacher_11501.csv';
+    let jsonUrl = './homerooms_11501.json';
+
     if (CONFIG && CONFIG.SEMESTERS && semLabel && CONFIG.SEMESTERS[semLabel]) {
         const semObj = CONFIG.SEMESTERS[semLabel];
-        csvUrl = typeof semObj === 'string' ? semObj : (semObj.csv || csvUrl);
+        if (typeof semObj === 'string') {
+            csvUrl = semObj;
+        } else if (typeof semObj === 'object') {
+            csvUrl = semObj.csv || csvUrl;
+            jsonUrl = semObj.homerooms || jsonUrl;
+        }
     }
 
     try {
@@ -168,15 +175,7 @@ async function fetchAndParseCSV(semLabel) {
             csvText = csvText.slice(1);
         }
 
-        // 取得對應的 homerooms.json
-        let jsonUrl = csvUrl.replace('teacher_timetable_matrix', 'homerooms_11402')
-                            .replace('timetable_', 'homerooms_')
-                            .replace('.csv', '.json');
-        
-        if (CONFIG && CONFIG.SEMESTERS && CONFIG.SEMESTERS[semLabel] && CONFIG.SEMESTERS[semLabel].homerooms) {
-            jsonUrl = CONFIG.SEMESTERS[semLabel].homerooms;
-        }
-
+        // 📌 讀取 homerooms_11501.json 導師資料
         try {
             const hmRes = await fetch(jsonUrl);
             if (hmRes.ok) homeroomData = await hmRes.json();
@@ -476,7 +475,9 @@ function displayClassSchedule(className) {
         }
     });
     
-    const hmTeacher = homeroomData[className] || '';
+    // 📌 支援以完整名稱 "701" 或純數字 "701" 查找導師
+    const numClass = className.replace(/\D/g, '');
+    const hmTeacher = homeroomData[className] || homeroomData[numClass] || '';
     const hmHtml = hmTeacher ? `<span style="font-size: 1.1rem; color: var(--text-dim); margin-left: 0.5rem; font-weight: 500;">(導師：${escHtml(hmTeacher)})</span>` : '';
     
     scheduleTitle.innerHTML = `${className} 班課表 ${hmHtml}`;
@@ -524,7 +525,7 @@ function buildScheduleTable(cells, mode) {
 
     // 早自習列
     if (hasEarly) {
-        const et = periods[0] || { start: '07:40', end: '08:10' };
+        const et = periods[0] || { start: '07:35', end: '08:10' };
         html += `<tr><td class="td-period">
             <div class="period-num">早自習</div>
             <div class="period-time">${et.start}<br>${et.end}</div>
