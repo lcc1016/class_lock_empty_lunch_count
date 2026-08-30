@@ -8,7 +8,7 @@
 /* ── 全域狀態 ─────────────────────────────────────────────── */
 let scheduleData    = [];   // CSV 全部資料
 let homeroomData    = {};   // 導師資料 JSON
-let lockedData      = {};   // 📌 綁課資料 JSON
+let lockedData      = {};   // 綁課資料 JSON
 let isLoggedIn      = false;
 let navHistory      = [];   // 導航歷史 [{type, value}]
 let classGroups     = {};   // 班級分類
@@ -77,9 +77,9 @@ function goBack() {
         showQueryView();
         return;
     }
-    navHistory.pop();                               // 移除目前頁
+    navHistory.pop();                               
     const prev = navHistory[navHistory.length - 1];
-    navHistory.pop();                               // 移除上一頁（displayX 會再 push）
+    navHistory.pop();                               
     if (prev.type === 'class')   displayClassSchedule(prev.value);
     else                         displayTeacherSchedule(prev.value);
 }
@@ -95,14 +95,10 @@ function updateBackBtn() {
 ═══════════════════════════════════════════════════════════ */
 function populateSemesterSelect() {
     const sel = document.getElementById('semesterSelect');
-    if (!sel || !CONFIG || !CONFIG.SEMESTERS) return;
+    if (!sel || typeof CONFIG === 'undefined' || !CONFIG.SEMESTERS) return;
     
     sel.innerHTML = '';
-
-    // 取得所有 key，過濾掉 homerooms、csv 等非學期的屬性名稱
-    const keys = Object.keys(CONFIG.SEMESTERS).filter(key => 
-        key !== 'homerooms' && key !== 'csv'
-    );
+    const keys = Object.keys(CONFIG.SEMESTERS);
 
     keys.forEach((label, i) => {
         const opt = document.createElement('option');
@@ -112,42 +108,46 @@ function populateSemesterSelect() {
         sel.appendChild(opt);
     });
 }
+
 /* ═══════════════════════════════════════════════════════════
-   登入查詢 (簡化版：無須帳號密碼，直接讀取)
+   登入查詢
 ═══════════════════════════════════════════════════════════ */
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const errEl   = document.getElementById('loginError');
-    const btn     = document.getElementById('loginBtn');
-    const spinner = document.getElementById('loginSpinner');
-    const semSelect = document.getElementById('semesterSelect');
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const errEl   = document.getElementById('loginError');
+        const btn     = document.getElementById('loginBtn');
+        const spinner = document.getElementById('loginSpinner');
+        const semSelect = document.getElementById('semesterSelect');
 
-    if (errEl) errEl.textContent = '';
+        if (errEl) errEl.textContent = '';
 
-    let semLabel = '';
-    if (semSelect && semSelect.options && semSelect.options.length > 0) {
-        semLabel = semSelect.value;
-    } else if (typeof CONFIG !== 'undefined' && CONFIG.SEMESTERS) {
-        semLabel = Object.keys(CONFIG.SEMESTERS)[0] || '';
-    }
+        let semLabel = '';
+        if (semSelect && semSelect.options && semSelect.options.length > 0) {
+            semLabel = semSelect.value;
+        } else if (typeof CONFIG !== 'undefined' && CONFIG.SEMESTERS) {
+            semLabel = Object.keys(CONFIG.SEMESTERS)[0] || '';
+        }
 
-    if (!semLabel) {
-        if (errEl) errEl.textContent = '請先選擇學期或確認 config.js 設定';
-        return;
-    }
+        if (!semLabel) {
+            if (errEl) errEl.textContent = '請先選擇學期或確認 config.js 設定';
+            return;
+        }
 
-    if (btn) btn.disabled = true;
-    if (spinner) spinner.classList.add('show');
+        if (btn) btn.disabled = true;
+        if (spinner) spinner.classList.add('show');
 
-    try {
-        await fetchAndParseCSV(semLabel);
-    } catch (err) {
-        if (errEl) errEl.textContent = '載入失敗，請確認課表檔案是否存在。';
-    } finally {
-        if (btn) btn.disabled = false;
-        if (spinner) spinner.classList.remove('show');
-    }
-});
+        try {
+            await fetchAndParseCSV(semLabel);
+        } catch (err) {
+            if (errEl) errEl.textContent = '載入失敗，請確認課表檔案是否存在。';
+        } finally {
+            if (btn) btn.disabled = false;
+            if (spinner) spinner.classList.remove('show');
+        }
+    });
+}
 
 /* ═══════════════════════════════════════════════════════════
    CSV 與 JSON 載入與解析
@@ -158,7 +158,7 @@ async function fetchAndParseCSV(semLabel) {
     let csvUrl = './teacher_11501.csv';
     let jsonUrl = './homerooms_11501.json';
 
-    if (CONFIG && CONFIG.SEMESTERS && semLabel && CONFIG.SEMESTERS[semLabel]) {
+    if (typeof CONFIG !== 'undefined' && CONFIG.SEMESTERS && semLabel && CONFIG.SEMESTERS[semLabel]) {
         const semObj = CONFIG.SEMESTERS[semLabel];
         if (typeof semObj === 'string') {
             csvUrl = semObj;
@@ -172,7 +172,6 @@ async function fetchAndParseCSV(semLabel) {
         const response = await fetch(csvUrl);
         if (!response.ok) throw new Error(`HTTP 錯誤 ${response.status}`);
         
-        // ── 強制 UTF-8 解碼並排除 BOM ──
         const buffer = await response.arrayBuffer();
         const decoder = new TextDecoder('utf-8');
         let csvText = decoder.decode(buffer);
@@ -180,15 +179,15 @@ async function fetchAndParseCSV(semLabel) {
             csvText = csvText.slice(1);
         }
 
-        // 📌 讀取 homerooms_11501.json 導師資料
+        // 📌 讀取 homerooms 導師 JSON
         try {
             const hmRes = await fetch(jsonUrl);
             if (hmRes.ok) homeroomData = await hmRes.json();
             else homeroomData = {};
         } catch (e) { homeroomData = {}; }
 
-        // 📌 讀取 locked_courses.json 綁課資料
-        let lockUrl = (CONFIG && CONFIG.LOCKED_COURSES_URL) ? CONFIG.LOCKED_COURSES_URL : './locked_courses.json';
+        // 📌 讀取 locked 綁課 JSON
+        let lockUrl = (typeof CONFIG !== 'undefined' && CONFIG.LOCKED_COURSES_URL) ? CONFIG.LOCKED_COURSES_URL : './locked_courses.json';
         try {
             const lockRes = await fetch(lockUrl);
             if (lockRes.ok) lockedData = await lockRes.json();
@@ -212,8 +211,8 @@ async function fetchAndParseCSV(semLabel) {
     } catch (err) {
         if (loadingOverlay) loadingOverlay.classList.remove('show');
         console.error(err);
-        document.getElementById('loginError').textContent =
-            `載入失敗：${err.message}。請確認 CSV/JSON 檔案路徑。`;
+        const errEl = document.getElementById('loginError');
+        if (errEl) errEl.textContent = `載入失敗：${err.message}。請確認 CSV/JSON 檔案路徑。`;
     }
 }
 
@@ -222,10 +221,9 @@ function isSubjectLocked(className, subjectName) {
     if (!className || !subjectName || !lockedData) return false;
 
     const cleanClass = className.trim();
-    const numClass = className.replace(/\D/g, ''); // 例如 "701"
+    const numClass = className.replace(/\D/g, ''); 
     const cleanSubj = normalizeSubject(subjectName);
 
-    // 支援以 "701" 或完整名稱 "七年1班" 比對
     const rules = lockedData[numClass] || lockedData[cleanClass] || lockedData[className];
     if (!rules) return false;
 
@@ -262,9 +260,8 @@ function parseCSV(text) {
    建立分類資料
 ═══════════════════════════════════════════════════════════ */
 function buildCategories() {
-    // ── 班級分類 ──
     const allClasses = new Set();
-    const PERIODS = [0,1,2,3,4,5,6,7,8,9];  // 0=早自習
+    const PERIODS = [0,1,2,3,4,5,6,7,8,9]; 
     
     scheduleData.forEach(row => {
         for (let d = 1; d <= 5; d++) {
@@ -310,7 +307,6 @@ function buildCategories() {
     });
     classGroups['特殊班'].sort();
 
-    // ── 科目→教師分類 ──
     subjectTeachers = {};
     scheduleData.forEach(row => {
         for (let d = 1; d <= 5; d++) {
@@ -371,10 +367,15 @@ function populateGradeSelect(selId, classes) {
    Tab 切換
 ═══════════════════════════════════════════════════════════ */
 function switchTab(tab) {
-    document.getElementById('tabClass').classList.toggle('active', tab === 'class');
-    document.getElementById('tabTeacher').classList.toggle('active', tab === 'teacher');
-    document.getElementById('panelClass').classList.toggle('hidden', tab !== 'class');
-    document.getElementById('panelTeacher').classList.toggle('hidden', tab !== 'teacher');
+    const tabClass = document.getElementById('tabClass');
+    const tabTeacher = document.getElementById('tabTeacher');
+    const panelClass = document.getElementById('panelClass');
+    const panelTeacher = document.getElementById('panelTeacher');
+
+    if (tabClass) tabClass.classList.toggle('active', tab === 'class');
+    if (tabTeacher) tabTeacher.classList.toggle('active', tab === 'teacher');
+    if (panelClass) panelClass.classList.toggle('hidden', tab !== 'class');
+    if (panelTeacher) panelTeacher.classList.toggle('hidden', tab !== 'teacher');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -417,7 +418,8 @@ function submitClassQuery() {
         .map(id => document.getElementById(id)?.value)
         .find(v => v);
     if (!cls) {
-        document.getElementById('classError').textContent = '請先選擇一個班級';
+        const ce = document.getElementById('classError');
+        if (ce) ce.textContent = '請先選擇一個班級';
         return;
     }
     navHistory = [];
@@ -428,22 +430,29 @@ function submitClassQuery() {
    教師查詢
 ═══════════════════════════════════════════════════════════ */
 function onSubjectChange() {
-    const subj = document.getElementById('subjectSelect').value;
+    const subjSel = document.getElementById('subjectSelect');
     const teacherSel = document.getElementById('teacherSelect');
+    if (!subjSel || !teacherSel) return;
+    
+    const subj = subjSel.value;
     teacherSel.innerHTML = '<option value="">— 選擇教師 —</option>';
     if (!subj) return;
+    
     (subjectTeachers[subj] || []).forEach(t => {
         const opt = document.createElement('option');
         opt.value = t; opt.textContent = t;
         teacherSel.appendChild(opt);
     });
-    document.getElementById('teacherError').textContent = '';
+    const te = document.getElementById('teacherError');
+    if (te) te.textContent = '';
 }
 
 function submitTeacherQuery() {
-    const teacher = document.getElementById('teacherSelect').value;
+    const teacherSel = document.getElementById('teacherSelect');
+    const teacher = teacherSel ? teacherSel.value : '';
     if (!teacher) {
-        document.getElementById('teacherError').textContent = '請先選擇科目與教師';
+        const te = document.getElementById('teacherError');
+        if (te) te.textContent = '請先選擇科目與教師';
         return;
     }
     navHistory = [];
@@ -485,8 +494,8 @@ function displayClassSchedule(className) {
     const hmTeacher = homeroomData[className] || homeroomData[numClass] || '';
     const hmHtml = hmTeacher ? `<span style="font-size: 1.1rem; color: var(--text-dim); margin-left: 0.5rem; font-weight: 500;">(導師：${escHtml(hmTeacher)})</span>` : '';
     
-    scheduleTitle.innerHTML = `${className} 班課表 ${hmHtml}`;
-    scheduleTableContainer.innerHTML = buildScheduleTable(cells, 'class');
+    if (scheduleTitle) scheduleTitle.innerHTML = `${className} 班課表 ${hmHtml}`;
+    if (scheduleTableContainer) scheduleTableContainer.innerHTML = buildScheduleTable(cells, 'class');
     showView('resultView');
     updateBackBtn();
 }
@@ -510,8 +519,8 @@ function displayTeacherSchedule(teacherName) {
             }
         }
     }
-    scheduleTitle.textContent = `${teacherName} 老師課表`;
-    scheduleTableContainer.innerHTML = buildScheduleTable(cells, 'teacher');
+    if (scheduleTitle) scheduleTitle.textContent = `${teacherName} 老師課表`;
+    if (scheduleTableContainer) scheduleTableContainer.innerHTML = buildScheduleTable(cells, 'teacher');
     showView('resultView');
     updateBackBtn();
 }
@@ -520,7 +529,7 @@ function displayTeacherSchedule(teacherName) {
    建構課表 HTML
 ═══════════════════════════════════════════════════════════ */
 function buildScheduleTable(cells, mode) {
-    const periods   = (CONFIG && CONFIG.PERIOD_TIMES) || [];
+    const periods   = (typeof CONFIG !== 'undefined' && CONFIG.PERIOD_TIMES) || [];
     const hasEarly  = Object.keys(cells).some(k => k.endsWith('-0'));
 
     let html = '<table class="schedule-table"><thead><tr>';
@@ -528,7 +537,6 @@ function buildScheduleTable(cells, mode) {
     DAYS.forEach(d => html += `<th>${d}</th>`);
     html += '</tr></thead><tbody>';
 
-    // 早自習列
     if (hasEarly) {
         const et = periods[0] || { start: '07:35', end: '08:10' };
         html += `<tr><td class="td-period">
@@ -541,7 +549,6 @@ function buildScheduleTable(cells, mode) {
         html += '</tr>';
     }
 
-    // 第1~8節
     for (let p = 1; p <= 8; p++) {
         const pt = periods[p] || { start: '', end: '' };
         html += `<tr><td class="td-period"><div class="period-num">第${p}節</div>`;
@@ -587,11 +594,13 @@ function escHtml(str) {
    列印
 ═══════════════════════════════════════════════════════════ */
 function printSchedule() {
+    if (!scheduleTitle || !scheduleTableContainer) return;
     const title     = scheduleTitle.textContent;
     const tableHTML = scheduleTableContainer.innerHTML;
     const semLabel  = document.getElementById('currentSemester')?.textContent || '';
 
     const win = window.open('', '_blank', 'width=1100,height=750');
+    if (!win) return;
     win.document.write(`<!DOCTYPE html>
 <html lang="zh-TW"><head><meta charset="UTF-8">
 <title>${title}</title>
