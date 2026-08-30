@@ -643,6 +643,10 @@ ${tableHTML}
    初始化
 ═══════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+    // 📌 確保學校名稱存在，避免分頁顯示 undefined
+    const schoolName = (typeof CONFIG !== 'undefined' && CONFIG.SCHOOL_NAME) ? CONFIG.SCHOOL_NAME : '民雄國中';
+    document.title = `${schoolName} 課表查詢`;
+
     populateSemesterSelect();
     setupGradeSelects();
     updateBackBtn();
