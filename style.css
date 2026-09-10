@@ -7,23 +7,15 @@
 :root {
     --primary-color: #0284c7;      /* 主視覺天藍色 */
     --primary-hover: #0369a1;      /* 主視覺按鈕懸停深藍色 */
-    --amber-color: #d97706;        /* 跨班/其他科目提醒橘色 */
-    --amber-hover: #b45309;        /* 橘色按鈕懸停深橘色 */
     --bg-color: #e0f2fe;           /* 整體網頁淡藍色背景 */
     --card-bg: #ffffff;            /* 白色卡片容器背景色 */
     --text-color: #1f2937;          /* 主要文字 (深灰) */
     --text-dim: #6b7280;           /* 次要/淡化文字 (中灰) */
     --border-color: #e2e8f0;       /* 通用邊框 (淺灰) */
-    
-    /* 特殊狀態顏色 */
-    --locked-bg: #fff1f2;          /* 綁課儲存格淡粉紅背景 */
-    --locked-border: #fca5a5;      /* 綁課儲存格粉紅邊框 */
-    --locked-text: #ef4444;        /* 綁課提示文字鮮紅色 */
-    --lunch-bg: #f0fdf4;           /* 午休/午餐時間淡綠背景 */
-    --lunch-text: #15803d;          /* 午休/午餐時間深綠文字 */
+    --lunch-bg: #f0fdf4;           /* 午休淡綠背景 */
+    --lunch-text: #15803d;         /* 午休深綠文字 */
 }
 
-/* ── 基礎 reset 與通用設定 ──────────────────────────────── */
 *, *::before, *::after {
     box-sizing: border-box;
     margin: 0;
@@ -37,10 +29,9 @@ body {
     line-height: 1.5;
     padding: 15px;
     min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
 }
 
-/* ── 載入中遮罩 (Loading Overlay) ───────────────────────── */
+/* ── 載入中遮罩 ─────────────────────────────────────────── */
 .loading-overlay {
     display: none;
     position: fixed;
@@ -56,12 +47,9 @@ body {
     flex-direction: column;
     gap: 12px;
     font-weight: bold;
-    color: var(--text-color);
 }
 
-.loading-overlay.show {
-    display: flex !important;
-}
+.loading-overlay.show { display: flex !important; }
 
 .spinner {
     width: 40px;
@@ -77,7 +65,7 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* ── 視圖切換 (View Containers - 關鍵修復處) ──────────────── */
+/* ── 視圖切換 ───────────────────────────────────────────── */
 .view-container {
     display: none !important;
     width: 100%;
@@ -86,21 +74,11 @@ body {
     justify-content: center;
 }
 
-/* 只有加上 .active 的頁面才會強行顯示 */
-.view-container.active {
-    display: flex !important;
-}
+.view-container.active { display: flex !important; }
+.view-container.result-active { display: block !important; max-width: 1100px; }
+.hidden { display: none !important; }
 
-.view-container.result-active {
-    display: block !important;
-    max-width: 1100px;
-}
-
-.hidden {
-    display: none !important;
-}
-
-/* ── 卡片容器樣式 ───────────────────────────────────────── */
+/* ── 卡片容器 ───────────────────────────────────────────── */
 .login-card, .query-card, .result-card {
     background: var(--card-bg);
     padding: 36px 30px;
@@ -109,38 +87,13 @@ body {
     width: 100%;
 }
 
-.login-card {
-    max-width: 440px;
-    text-align: center;
-}
+.login-card { max-width: 440px; text-align: center; }
+.system-title { font-size: 1.6rem; margin-bottom: 6px; color: #1e293b; font-weight: 800; }
+.system-subtitle { font-size: 0.95rem; color: var(--text-dim); margin-bottom: 28px; }
 
-.system-title {
-    font-size: 1.6rem;
-    margin-bottom: 6px;
-    color: #1e293b;
-    font-weight: 800;
-}
-
-.system-subtitle {
-    font-size: 0.95rem;
-    color: var(--text-dim);
-    margin-bottom: 28px;
-}
-
-/* ── 表單控制元件 ───────────────────────────────────────── */
-.form-group {
-    margin-bottom: 20px;
-    text-align: left;
-}
-
-.form-group label {
-    display: block;
-    font-size: 0.95rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: #334155;
-}
-
+/* ── 表單元件 ───────────────────────────────────────────── */
+.form-group { margin-bottom: 20px; text-align: left; }
+.form-group label { display: block; font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; color: #334155; }
 .form-control {
     width: 100%;
     padding: 10px 14px;
@@ -149,22 +102,11 @@ body {
     border-radius: 8px;
     outline: none;
     background-color: #fff;
-    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-control:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
-}
+.error-msg { color: #ef4444; font-size: 0.88rem; margin-top: 12px; min-height: 1.2em; }
 
-.error-msg {
-    color: var(--locked-text);
-    font-size: 0.88rem;
-    margin-top: 12px;
-    min-height: 1.2em;
-}
-
-/* ── 登入頁三欄式佈局 (按鈕與瀏覽計數) ────────────────────── */
+/* ── 登入頁瀏覽計數與按鈕佈局 ───────────────────────────── */
 .login-actions {
     display: flex;
     align-items: center;
@@ -174,15 +116,8 @@ body {
     width: 100%;
 }
 
-/* 進入系統按鈕彈性寬度 */
-.login-actions .btn-primary {
-    flex: 1 1 auto;
-    padding: 11px 16px;
-    font-size: 1.05rem;
-    white-space: nowrap;
-}
+.login-actions .btn-primary { flex: 1 1 auto; padding: 11px 16px; font-size: 1.05rem; white-space: nowrap; }
 
-/* 左右計數器外框 */
 .counter-box {
     flex: 0 0 92px;
     height: 48px;
@@ -196,22 +131,10 @@ body {
     text-align: center;
 }
 
-.counter-label {
-    font-size: 0.72rem;
-    color: var(--text-dim);
-    font-weight: 600;
-    line-height: 1.1;
-}
+.counter-label { font-size: 0.72rem; color: var(--text-dim); font-weight: 600; line-height: 1.1; }
+.counter-value { font-size: 0.95rem; font-weight: 800; color: #0f172a; line-height: 1.2; margin-top: 2px; }
 
-.counter-value {
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: #0f172a;
-    line-height: 1.2;
-    margin-top: 2px;
-}
-
-/* ── 按鈕系統 ───────────────────────────────────────────── */
+/* ── 按鈕 ───────────────────────────────────────────────── */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -222,253 +145,56 @@ body {
     border-radius: 8px;
     border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s ease;
-    user-select: none;
 }
 
-.btn-primary {
-    background-color: #0284c7;
-    color: #ffffff;
-}
+.btn-primary { background-color: #0284c7; color: #ffffff; }
 .btn-primary:hover { background-color: #0369a1; }
+.btn-secondary { background-color: #64748b; color: #ffffff; }
+.btn-outline { border-color: #cbd5e1; background-color: #fff; color: #334155; }
 
-.btn-secondary {
-    background-color: #64748b;
-    color: #ffffff;
-}
-.btn-secondary:hover { background-color: #475569; }
+/* ── 頁籤與網格 ─────────────────────────────────────────── */
+.header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+.semester-badge { background-color: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+.tab-header { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid var(--border-color); }
+.tab-btn { padding: 10px 20px; border: none; background: none; font-size: 1.1rem; font-weight: 600; color: var(--text-dim); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+.tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
 
-.btn-outline {
-    border-color: #cbd5e1;
-    background-color: #fff;
-    color: #334155;
-}
-.btn-outline:hover { background-color: #f8fafc; }
+.query-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 
-/* ── 查詢頁 Tab 頁籤與網格 ──────────────────────────────── */
-.header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-color);
-}
+/* ── 課表結果與表格 ─────────────────────────────────────── */
+.action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.title-header-container { position: relative; display: flex; align-items: center; justify-content: center; margin: 10px 0 20px; width: 100%; }
+.schedule-title { font-size: 1.7rem; font-weight: 800; color: #1d4ed8; text-align: center; }
+.homeroom-teacher-info { position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 0.95rem; font-weight: 600; color: #475569; background-color: #f1f5f9; padding: 4px 12px; border-radius: 6px; }
 
-.semester-badge {
-    background-color: #e0f2fe;
-    color: #0369a1;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
+.table-responsive { width: 100%; overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color); }
+.schedule-table { width: 100%; border-collapse: collapse; table-layout: fixed; background-color: #ffffff; min-width: 650px; }
+.schedule-table th, .schedule-table td { border: 1px solid var(--border-color); padding: 10px 4px; text-align: center; vertical-align: middle; }
+.schedule-table th { background-color: #f1f5f9; font-weight: 700; color: #334155; }
 
-.tab-header {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    border-bottom: 2px solid var(--border-color);
-}
+.th-period, .td-period { width: 75px; background-color: #f8fafc; }
+.period-num { font-weight: 700; font-size: 0.95rem; color: #1e293b; }
+.td-lunch { background-color: var(--lunch-bg); color: var(--lunch-text); font-weight: 700; font-size: 0.95rem; letter-spacing: 2px; }
 
-.tab-btn {
-    padding: 10px 20px;
-    border: none;
-    background: none;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-dim);
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
-    transition: color 0.2s, border-color 0.2s;
-}
+.cell-subject { font-weight: 800; font-size: 0.95rem; color: #0f172a; }
+.cell-subtext { font-size: 0.82rem; color: #64748b; margin-top: 2px; }
 
-.tab-btn.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-}
-
-.query-grid-2 {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-}
-
-/* ── 課表結果頁標頭 ─────────────────────────────────────── */
-.action-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.title-header-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 10px 0 20px;
-    width: 100%;
-}
-
-.schedule-title {
-    font-size: 1.7rem;
-    font-weight: 800;
-    color: #1d4ed8;
-    text-align: center;
-}
-
-.homeroom-teacher-info {
-    position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #475569;
-    background-color: #f1f5f9;
-    padding: 4px 12px;
-    border-radius: 6px;
-}
-
-/* ── 課表表格結構 ───────────────────────────────────────── */
-.table-responsive {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-}
-
-.schedule-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    background-color: #ffffff;
-    min-width: 650px;
-}
-
-.schedule-table th,
-.schedule-table td {
-    border: 1px solid var(--border-color);
-    padding: 10px 4px;
-    text-align: center;
-    vertical-align: middle;
-}
-
-.schedule-table th {
-    background-color: #f1f5f9;
-    font-weight: 700;
-    color: #334155;
-}
-
-.th-period, .td-period {
-    width: 70px;
-    background-color: #f8fafc;
-}
-
-.period-num {
-    display: block;
-    font-weight: 700;
-    font-size: 1rem;
-    color: #1e293b;
-}
-
-.period-time {
-    display: block;
-    font-size: 0.8rem;
-    color: #64748b;
-    margin-top: 2px;
-}
-
-.td-lunch {
-    background-color: var(--lunch-bg);
-    color: var(--lunch-text);
-    font-weight: 700;
-    font-size: 0.95rem;
-    letter-spacing: 2px;
-    padding: 8px 4px;
-}
-
-.cell-subject {
-    font-weight: 800;
-    font-size: 0.95rem;
-    color: #0f172a;
-}
-
-/* ── 代課 Modal ─────────────────────────────────────────── */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(2px);
-    z-index: 9999;
-    align-items: center;
-    justify-content: center;
-}
-
+/* ── Modal ──────────────────────────────────────────────── */
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.4); z-index: 9999; align-items: center; justify-content: center; }
 .modal.show { display: flex !important; }
+.modal-content { background: #ffffff; width: 90%; max-width: 500px; border-radius: 16px; overflow: hidden; }
+.modal-header { padding: 1rem 1.25rem; background-color: #f8fafc; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+.modal-body { padding: 1.25rem; max-height: 65vh; overflow-y: auto; }
 
-.modal-content {
-    background: #ffffff;
-    width: 90%;
-    max-width: 500px;
-    border-radius: 16px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-    overflow: hidden;
-}
-
-.modal-header {
-    padding: 1rem 1.25rem;
-    background-color: #f8fafc;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #64748b;
-}
-
-.modal-body {
-    padding: 1.25rem;
-    max-height: 65vh;
-    overflow-y: auto;
-}
-
-/* 年級膠囊樣式 */
-.grade-label {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-weight: 700;
-}
+.grade-label { display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 700; }
 .grade-7 { background-color: #e0f2fe; color: #0284c7; }
 .grade-8 { background-color: #eef2ff; color: #6366f1; }
 .grade-9 { background-color: #dcfce7; color: #16a34a; }
 .grade-special { background-color: #fef9c3; color: #ca8a04; }
 
-/* ── Mobile RWD ─────────────────────────────────────────── */
 @media screen and (max-width: 600px) {
-    body { padding: 4px !important; }
-    
-    .view-container { margin: 10px auto; }
-
-    .counter-box {
-        flex: 0 0 76px;
-        height: 44px;
-    }
-
+    .counter-box { flex: 0 0 76px; height: 44px; }
     .counter-label { font-size: 0.65rem; }
     .counter-value { font-size: 0.85rem; }
 }

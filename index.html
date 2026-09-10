@@ -61,31 +61,33 @@
                 <button class="tab-btn" data-tab="teacher" onclick="switchTab('teacher')">教師課表</button>
             </div>
 
+            <!-- 班級課表選擇頁籤 -->
             <div id="classTab" class="tab-content">
                 <div class="query-grid-2">
                     <div class="form-group">
                         <label class="grade-label grade-7">七年級</label>
-                        <select id="grade7Select" class="form-control"><option value="">請選擇班級</option></select>
+                        <select id="grade7Select" class="form-control" onchange="onClassSelect(this)"><option value="">請選擇班級</option></select>
                     </div>
                     <div class="form-group">
                         <label class="grade-label grade-8">八年級</label>
-                        <select id="grade8Select" class="form-control"><option value="">請選擇班級</option></select>
+                        <select id="grade8Select" class="form-control" onchange="onClassSelect(this)"><option value="">請選擇班級</option></select>
                     </div>
                     <div class="form-group">
                         <label class="grade-label grade-9">九年級</label>
-                        <select id="grade9Select" class="form-control"><option value="">請選擇班級</option></select>
+                        <select id="grade9Select" class="form-control" onchange="onClassSelect(this)"><option value="">請選擇班級</option></select>
                     </div>
                     <div class="form-group">
                         <label class="grade-label grade-special">特教班</label>
-                        <select id="gradeSpecSelect" class="form-control"><option value="">請選擇班級</option></select>
+                        <select id="gradeSpecSelect" class="form-control" onchange="onClassSelect(this)"><option value="">請選擇班級</option></select>
                     </div>
                 </div>
             </div>
 
+            <!-- 教師課表選擇頁籤 -->
             <div id="teacherTab" class="tab-content hidden">
                 <div class="form-group">
                     <label for="teacherSelect">選擇教師</label>
-                    <select id="teacherSelect" class="form-control"><option value="">請選擇教師</option></select>
+                    <select id="teacherSelect" class="form-control" onchange="onTeacherSelect(this)"><option value="">請選擇教師</option></select>
                 </div>
             </div>
         </div>
@@ -105,7 +107,7 @@
             </div>
 
             <div id="scheduleTableContainer" class="table-responsive">
-                <!-- 動態繪製課表表格 -->
+                <!-- 動態繪製課表 -->
             </div>
         </div>
     </div>
@@ -123,6 +125,7 @@
         </div>
     </div>
 
+    <!-- 直接將 JavaScript 嵌入頁面底端，100% 避免 404 找不到 script.js 問題 -->
     <script src="script.js"></script>
 </body>
 </html>
