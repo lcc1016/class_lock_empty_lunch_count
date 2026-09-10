@@ -7,7 +7,7 @@
 
 /* ── 全域設定 ─────────────────────────────────────────────── */
 // 請替換成你部署好的 Google Apps Script 網址
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxYlrrYOEd7IjZpsi3UQpVdRzUkkNV34jko23b6WHZHhPqDrCLIyk8AveGLU8ljYUaU8g/exec";
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxuTSTnTEpeCXR62PAa_EC0J__Y4CX3KcaceWFea8pmr2rbDZXesbaf_h085uVJWjSYIw/exec";
 
 /* ── 全域狀態 ─────────────────────────────────────────────── */
 let scheduleData    = [];   // CSV 全部資料
@@ -43,22 +43,22 @@ function initDomReferences() {
 /* ═══════════════════════════════════════════════════════════
     瀏覽統計計數器 (串接 Google Apps Script 後端)
 ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+    瀏覽統計計數器 (串接 Google Apps Script 後端)
+═══════════════════════════════════════════════════════════ */
 
 /**
- * 初始化計數器：讀取當月與總累積瀏覽數
+ * 初始化計數器：網頁載入時向 GAS 請求「當月」與「總累計」人數
  */
 async function initViewCounter() {
-    if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("YOUR_DEPLOYMENT_ID")) {
-        console.warn("尚未設定 GAS_WEB_APP_URL，無法載入雲端計數器。");
-        return;
-    }
+    if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("YOUR_DEPLOYMENT_ID")) return;
 
     try {
         const response = await fetch(`${GAS_WEB_APP_URL}?action=getCounter`);
         if (!response.ok) throw new Error(`HTTP 錯誤 ${response.status}`);
         
         const data = await response.json();
-        if (data && data.total !== undefined) {
+        if (data) {
             updateCounterDisplay(data.month, data.total);
         }
     } catch (err) {
@@ -67,17 +67,18 @@ async function initViewCounter() {
 }
 
 /**
- * 累加計數器：點擊查詢時呼叫，同時增加當月與總累計
+ * 累加計數器：執行查詢時呼叫，讓 GAS 後端的當月與總計數同時 +1
  */
 async function incrementViewCounter() {
     if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("YOUR_DEPLOYMENT_ID")) return;
 
     try {
+        // 關鍵修正：action 必須為 increment 才能觸發加總
         const response = await fetch(`${GAS_WEB_APP_URL}?action=increment`);
         if (!response.ok) throw new Error(`HTTP 錯誤 ${response.status}`);
         
         const data = await response.json();
-        if (data && data.total !== undefined) {
+        if (data) {
             updateCounterDisplay(data.month, data.total);
         }
     } catch (err) {
@@ -86,22 +87,21 @@ async function incrementViewCounter() {
 }
 
 /**
- * 更新 HTML 畫面上的數字 display
+ * 更新 HTML 畫面上所有計數器位置的數字
  */
 function updateCounterDisplay(monthTotal, overallTotal) {
-    // 當月瀏覽數 ID (包含頂部標籤與下方載入區)
+    // 1. 更新當月瀏覽 (對應 ID: monthViews)
     const monthEls = document.querySelectorAll('#monthViews, .month-visitor-count');
     monthEls.forEach(el => {
         if (el) el.textContent = Number(monthTotal || 0).toLocaleString();
     });
 
-    // 總累積瀏覽數 ID
+    // 2. 更新總累計瀏覽 (對應 ID: totalViews, visitorCount)
     const totalEls = document.querySelectorAll('#totalViews, #visitorCount, .total-visitor-count');
     totalEls.forEach(el => {
         if (el) el.textContent = Number(overallTotal || 0).toLocaleString();
     });
 }
-
 /* ═══════════════════════════════════════════════════════════
     視圖切換
 ═══════════════════════════════════════════════════════════ */
