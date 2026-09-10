@@ -1,18 +1,22 @@
 /* ============================================================
-   課表查詢系統 - 主邏輯腳本 (script.js)
-   整合 homerooms_11501.json 資料讀取與課表動態渲染
+   課表查詢系統 - 主邏輯腳本 (app.js)
+   整合 teacher_11501.csv, homerooms_11501.json, locked_courses.json
    ============================================================ */
 
-// 全域資料儲存
-let scheduleData = null;
+// 全域資料庫
+let teacherRawData = [];
+let homeroomsData = {};
+let lockedCoursesData = {};
 
-// 頁面載入完成後初始化數據
+let classSchedules = {};   // { className: { "Mon": { "1": { subject, teacher }, ... } } }
+let teacherSchedules = {}; // { teacherName: { "Mon": { "1": { subject, className }, ... } } }
+
 window.addEventListener("DOMContentLoaded", () => {
     fetchViewsCount();
 });
 
 /**
- * 登入系統並載入 homerooms_11501.json
+ * 登入系統並非同步載入三個資料檔
  */
 async function handleLogin() {
     const semesterSelect = document.getElementById("semesterSelect");
@@ -28,50 +32,150 @@ async function handleLogin() {
     showLoading(true);
 
     try {
-        // 讀取課表 JSON 檔 (請確保 homerooms_11501.json 放置在專案根目錄)
-        const response = await fetch("homerooms_11501.json");
-        if (!response.ok) {
-            throw new Error(`無法載入課表資料檔 (HTTP ${response.status})`);
-        }
-        
-        scheduleData = await response.json();
+        // 同時讀取三個檔案
+        const [csvRes, hrRes, lockedRes] = await Promise.all([
+            fetch("teacher_11501.csv"),
+            fetch("homerooms_11501.json"),
+            fetch("locked_courses.json")
+        ]);
 
-        // 初始化選單
+        if (!csvRes.ok) throw new Error("無法讀取 teacher_11501.csv");
+        if (!hrRes.ok) throw new Error("無法讀取 homerooms_11501.json");
+        if (!lockedRes.ok) throw new Error("無法讀取 locked_courses.json");
+
+        const csvText = await csvRes.text();
+        homeroomsData = await hrRes.json();
+        lockedCoursesData = await lockedRes.json();
+
+        // 解析 CSV 並構建課表索引
+        parseCSVData(csvText);
+
+        // 下拉選單初始化
         populateClassDropdowns();
         populateTeacherDropdown();
 
-        // 切換介面
+        // 更新 UI 介面
         const badge = document.getElementById("currentSemesterBadge");
         if (badge) badge.textContent = semester;
 
         switchView("queryView");
     } catch (error) {
-        console.error("載入失敗:", error);
-        if (loginError) loginError.textContent = "載入 homerooms_11501.json 失敗，請確認檔案位置！";
+        console.error("資料載入失敗:", error);
+        if (loginError) loginError.textContent = "資料檔案載入失敗，請確認檔案位置與格式！";
     } finally {
         showLoading(false);
     }
 }
 
 /**
- * 動態填入班級下拉選單
+ * 解析 teacher_11501.csv 並轉換為雙向索引 (班級課表 & 教師課表)
+ */
+function parseCSVData(csvText) {
+    classSchedules = {};
+    teacherSchedules = {};
+
+    const dayKeys = ["1", "2", "3", "4", "5"];
+    const dayMap = { "1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu", "5": "Fri" };
+    const periods = ["0", "1", "2", "3", "4", "5", "6", "7"];
+
+    const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== "");
+    if (lines.length < 2) return;
+
+    const headers = parseCSVLine(lines[0]);
+
+    for (let i = 1; i < lines.length; i++) {
+        const row = parseCSVLine(lines[i]);
+        if (row.length < 1) continue;
+
+        const teacherName = row[0]?.trim();
+        if (!teacherName) continue;
+
+        if (!teacherSchedules[teacherName]) {
+            teacherSchedules[teacherName] = {};
+        }
+
+        // 讀取每星期、每節次的科目與班級
+        dayKeys.forEach(dayCode => {
+            const dayName = dayMap[dayCode];
+            if (!teacherSchedules[teacherName][dayName]) {
+                teacherSchedules[teacherName][dayName] = {};
+            }
+
+            periods.forEach(p => {
+                const subjCol = `s${dayCode}${p}`;
+                const classCol = `c${dayCode}${p}`;
+
+                const subjIdx = headers.indexOf(subjCol);
+                const classIdx = headers.indexOf(classCol);
+
+                if (subjIdx !== -1 && classIdx !== -1) {
+                    const subject = row[subjIdx]?.trim();
+                    let rawClass = row[classIdx]?.trim();
+
+                    if (subject && rawClass) {
+                        // 轉為整數班級格式 (例如 "701.0" -> "701")
+                        const className = rawClass.split('.')[0];
+
+                        // 1. 寫入教師課表
+                        teacherSchedules[teacherName][dayName][p] = { subject, className };
+
+                        // 2. 寫入班級課表
+                        if (!classSchedules[className]) {
+                            classSchedules[className] = {};
+                        }
+                        if (!classSchedules[className][dayName]) {
+                            classSchedules[className][dayName] = {};
+                        }
+                        classSchedules[className][dayName][p] = { subject, teacher: teacherName };
+                    }
+                }
+            });
+        });
+    }
+}
+
+/**
+ * CSV 單行解析工具 (處理引號與逗號)
+ */
+function parseCSVLine(line) {
+    const result = [];
+    let cur = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') {
+            inQuotes = !inQuotes;
+        } else if (c === ',' && !inQuotes) {
+            result.push(cur);
+            cur = "";
+        } else {
+            cur += c;
+        }
+    }
+    result.push(cur);
+    return result;
+}
+
+/**
+ * 產生班級下拉選單
  */
 function populateClassDropdowns() {
-    if (!scheduleData) return;
-
     const g7 = document.getElementById("grade7Select");
     const g8 = document.getElementById("grade8Select");
     const g9 = document.getElementById("grade9Select");
     const gSpec = document.getElementById("gradeSpecSelect");
 
-    // 重置
     if (g7) g7.innerHTML = '<option value="">請選擇班級</option>';
     if (g8) g8.innerHTML = '<option value="">請選擇班級</option>';
     if (g9) g9.innerHTML = '<option value="">請選擇班級</option>';
     if (gSpec) gSpec.innerHTML = '<option value="">請選擇班級</option>';
 
-    const keys = Object.keys(scheduleData);
-    keys.sort().forEach(className => {
+    // 合併 CSV 出現的班級與導師名單中的班級
+    const allClasses = new Set([...Object.keys(classSchedules), ...Object.keys(homeroomsData)]);
+    const sortedClasses = Array.from(allClasses).sort();
+
+    sortedClasses.forEach(className => {
         const option = `<option value="${className}">${className}</option>`;
         if (className.startsWith("7")) g7?.insertAdjacentHTML("beforeend", option);
         else if (className.startsWith("8")) g8?.insertAdjacentHTML("beforeend", option);
@@ -81,42 +185,27 @@ function populateClassDropdowns() {
 }
 
 /**
- * 動態填入教師下拉選單
+ * 產生教師下拉選單
  */
 function populateTeacherDropdown() {
-    if (!scheduleData) return;
-
     const teacherSelect = document.getElementById("teacherSelect");
     if (!teacherSelect) return;
 
-    const teachersSet = new Set();
-
-    // 遍歷所有班級收集教師名稱
-    Object.values(scheduleData).forEach(classObj => {
-        if (classObj.homeroom_teacher) teachersSet.add(classObj.homeroom_teacher);
-        if (classObj.schedule) {
-            Object.values(classObj.schedule).forEach(day => {
-                Object.values(day).forEach(cell => {
-                    if (cell && cell.teacher) teachersSet.add(cell.teacher);
-                });
-            });
-        }
-    });
-
     teacherSelect.innerHTML = '<option value="">請選擇教師</option>';
-    Array.from(teachersSet).sort().forEach(teacher => {
+    const sortedTeachers = Object.keys(teacherSchedules).sort();
+
+    sortedTeachers.forEach(teacher => {
         teacherSelect.insertAdjacentHTML("beforeend", `<option value="${teacher}">${teacher}</option>`);
     });
 }
 
 /**
- * 班級選擇改變事件
+ * 班級選擇變更
  */
 function onClassSelect(selectEl) {
     const className = selectEl.value;
     if (!className) return;
 
-    // 清空其他年級選單
     ["grade7Select", "grade8Select", "grade9Select", "gradeSpecSelect"].forEach(id => {
         if (id !== selectEl.id) {
             const el = document.getElementById(id);
@@ -128,7 +217,7 @@ function onClassSelect(selectEl) {
 }
 
 /**
- * 教師選擇改變事件
+ * 教師選擇變更
  */
 function onTeacherSelect(selectEl) {
     const teacherName = selectEl.value;
@@ -141,23 +230,28 @@ function onTeacherSelect(selectEl) {
  * 繪製班級課表
  */
 function renderClassSchedule(className) {
-    const classData = scheduleData[className];
-    if (!classData) return;
+    const schedule = classSchedules[className] || {};
+    const homeroomTeacher = homeroomsData[className] || "無";
+    const lockedCourses = lockedCoursesData[className] || [];
 
     document.getElementById("scheduleTitle").textContent = `${className} 課表`;
-    
+
     const infoEl = document.getElementById("homeroomTeacherInfo");
     if (infoEl) {
-        infoEl.textContent = `導師：${classData.homeroom_teacher || "無"}`;
+        let text = `導師：${homeroomTeacher}`;
+        if (lockedCourses.length > 0) {
+            text += ` ｜ 綁課：${lockedCourses.join("、")}`;
+        }
+        infoEl.textContent = text;
         infoEl.classList.remove("hidden");
     }
 
     renderScheduleTable((dayKey, periodKey) => {
-        const cell = classData.schedule?.[dayKey]?.[periodKey];
+        const cell = schedule?.[dayKey]?.[periodKey];
         if (!cell) return "";
         return `
-            <div class="cell-subject">${cell.subject || ""}</div>
-            <div class="cell-subtext">${cell.teacher || ""}</div>
+            <div class="cell-subject">${cell.subject}</div>
+            <div class="cell-subtext">${cell.teacher}</div>
         `;
     });
 
@@ -168,37 +262,33 @@ function renderClassSchedule(className) {
  * 繪製教師課表
  */
 function renderTeacherSchedule(teacherName) {
+    const schedule = teacherSchedules[teacherName] || {};
+
     document.getElementById("scheduleTitle").textContent = `${teacherName} 老師課表`;
-    
+
     const infoEl = document.getElementById("homeroomTeacherInfo");
     if (infoEl) infoEl.classList.add("hidden");
 
     renderScheduleTable((dayKey, periodKey) => {
-        let matchInfo = "";
-        // 尋找該節次該教師在微調或主課表中的節次
-        Object.entries(scheduleData).forEach(([className, classObj]) => {
-            const cell = classObj.schedule?.[dayKey]?.[periodKey];
-            if (cell && cell.teacher === teacherName) {
-                matchInfo = `
-                    <div class="cell-subject">${cell.subject || ""}</div>
-                    <div class="cell-subtext">${className}</div>
-                `;
-            }
-        });
-        return matchInfo;
+        const cell = schedule?.[dayKey]?.[periodKey];
+        if (!cell) return "";
+        return `
+            <div class="cell-subject">${cell.subject}</div>
+            <div class="cell-subtext">${cell.className} 班</div>
+        `;
     });
 
     switchView("resultView");
 }
 
 /**
- * 通用繪製 5 天 7 節（含午休）課表表格
+ * 通用課表渲染（第 0~7 節）
  */
 function renderScheduleTable(getCellContent) {
     const container = document.getElementById("scheduleTableContainer");
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
     const dayLabels = ["星期一", "星期二", "星期三", "星期四", "星期五"];
-    const periods = [1, 2, 3, 4, 5, 6, 7];
+    const periods = ["0", "1", "2", "3", "4", "5", "6", "7"];
 
     let html = `
         <table class="schedule-table">
@@ -212,8 +302,19 @@ function renderScheduleTable(getCellContent) {
     `;
 
     periods.forEach(p => {
-        // 午休列插入
-        if (p === 5) {
+        // 第 0 節 (早自習)
+        if (p === "0") {
+            html += `
+                <tr>
+                    <td class="td-period"><span class="period-num">早自習</span></td>
+                    ${days.map(day => `<td>${getCellContent(day, "0")}</td>`).join("")}
+                </tr>
+            `;
+            return;
+        }
+
+        // 午休列
+        if (p === "5") {
             html += `
                 <tr>
                     <td class="td-period"><span class="period-num">午休</span></td>
@@ -225,7 +326,7 @@ function renderScheduleTable(getCellContent) {
         html += `
             <tr>
                 <td class="td-period"><span class="period-num">第 ${p} 節</span></td>
-                ${days.map(day => `<td>${getCellContent(day, p.toString()) || ""}</td>`).join("")}
+                ${days.map(day => `<td>${getCellContent(day, p)}</td>`).join("")}
             </tr>
         `;
     });
@@ -235,7 +336,7 @@ function renderScheduleTable(getCellContent) {
 }
 
 /**
- * 切換視圖
+ * 視圖切換邏輯
  */
 function switchView(viewId) {
     const views = ["loginView", "queryView", "resultView"];
@@ -293,9 +394,4 @@ function showLoading(show) {
         if (show) overlay.classList.add("show");
         else overlay.classList.remove("show");
     }
-}
-
-function closeModal() {
-    const modal = document.getElementById("substituteModal");
-    if (modal) modal.classList.remove("show");
 }
