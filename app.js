@@ -3,15 +3,17 @@
    民雄國中
    ============================================================ */
 
-// 頁面載入後自動執行非同步任務
-window.addEventListener("load", () => {
+// 頁面載入完成後自動執行
+window.addEventListener("DOMContentLoaded", () => {
     fetchViewsCount();
 });
 
 /**
- * 處理登入點擊動作 (開放全域呼叫，確保點擊必能觸發)
+ * 處理登入點擊動作
  */
 function handleLogin() {
+    console.log("進入系統按鈕被點擊");
+
     const semesterSelect = document.getElementById("semesterSelect");
     const loginError = document.getElementById("loginError");
     const semester = semesterSelect ? semesterSelect.value : "";
@@ -23,16 +25,19 @@ function handleLogin() {
 
     if (loginError) loginError.textContent = "";
 
+    // 顯示載入動畫並切換視圖
     showLoading(true);
 
-    // 切換至查詢視圖
     setTimeout(() => {
         showLoading(false);
+        
+        // 更新當前學期標籤
         const badge = document.getElementById("currentSemesterBadge");
         if (badge) badge.textContent = semester;
 
+        // 強制切換畫面至查詢頁
         switchView("queryView");
-    }, 400);
+    }, 300);
 }
 
 /**
@@ -40,6 +45,7 @@ function handleLogin() {
  */
 function switchView(viewId) {
     const views = ["loginView", "queryView", "resultView"];
+    
     views.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -83,28 +89,21 @@ function switchTab(tabType) {
 }
 
 /**
- * 從後端/API 取得當月與累計瀏覽次數並顯示
+ * 取得當月與累計瀏覽次數
  */
 async function fetchViewsCount() {
     const monthlyEl = document.getElementById("monthlyViews");
     const totalEl = document.getElementById("totalViews");
 
     try {
-        /* 
-           💡 實際串接時，解開下方註解並填入你的 API URL:
-           
-           const response = await fetch("https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getViews");
-           const data = await response.json();
-        */
-
-        // 模擬伺服器點閱數據
+        // 模擬數據，若沒傳回數據自動預設為 0
         const data = {
             monthlyViews: 1280,
             totalViews: 45200
         };
 
-        if (monthlyEl) monthlyEl.textContent = Number(data.monthlyViews).toLocaleString();
-        if (totalEl) totalEl.textContent = Number(data.totalViews).toLocaleString();
+        if (monthlyEl) monthlyEl.textContent = Number(data.monthlyViews || 0).toLocaleString();
+        if (totalEl) totalEl.textContent = Number(data.totalViews || 0).toLocaleString();
 
     } catch (error) {
         console.error("無法取得瀏覽次數:", error);

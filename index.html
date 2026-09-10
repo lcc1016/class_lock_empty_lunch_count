@@ -36,8 +36,7 @@
                     <span id="monthlyViews" class="counter-value">--</span>
                 </div>
 
-                <!-- 直接加上 onclick="handleLogin()" 確保必定能觸發 -->
-                <button id="loginBtn" class="btn btn-primary" onclick="handleLogin()">進入系統</button>
+                <button id="loginBtn" type="button" class="btn btn-primary" onclick="handleLogin()">進入系統</button>
 
                 <div class="counter-box total-counter">
                     <span class="counter-label">累計瀏覽</span>
@@ -96,8 +95,8 @@
     <div id="resultView" class="view-container">
         <div class="result-card">
             <div class="action-bar">
-                <button id="backBtn" class="btn btn-outline" onclick="showQueryView()">← 返回查詢</button>
-                <button id="printBtn" class="btn btn-secondary" onclick="window.print()">列印課表</button>
+                <button id="backBtn" type="button" class="btn btn-outline" onclick="showQueryView()">← 返回查詢</button>
+                <button id="printBtn" type="button" class="btn btn-secondary" onclick="window.print()">列印課表</button>
             </div>
 
             <div class="title-header-container">
@@ -116,7 +115,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>選擇代課教師</h3>
-                <button id="closeModalBtn" class="modal-close" onclick="closeModal()">&times;</button>
+                <button id="closeModalBtn" type="button" class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div id="modalBody" class="modal-body">
                 <!-- 動態注入空堂教師列表 -->

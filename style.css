@@ -77,15 +77,16 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* ── 視圖切換 (View Containers) ─────────────────────────── */
+/* ── 視圖切換 (View Containers - 關鍵修復處) ──────────────── */
 .view-container {
-    display: none;
+    display: none !important;
     width: 100%;
     max-width: 900px;
     margin: 40px auto;
     justify-content: center;
 }
 
+/* 只有加上 .active 的頁面才會強行顯示 */
 .view-container.active {
     display: flex !important;
 }
@@ -396,23 +397,6 @@ body {
     color: #0f172a;
 }
 
-.clickable-subject {
-    cursor: pointer;
-    transition: opacity 0.2s;
-}
-.clickable-subject:hover { opacity: 0.75; }
-
-.cell-link {
-    display: inline-block;
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    background-color: #e0f2fe;
-    padding: 3px 8px;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
 /* ── 代課 Modal ─────────────────────────────────────────── */
 .modal {
     display: none;
@@ -487,9 +471,4 @@ body {
 
     .counter-label { font-size: 0.65rem; }
     .counter-value { font-size: 0.85rem; }
-
-    .schedule-table th, .schedule-table td {
-        font-size: 0.75rem !important;
-        padding: 4px 1px !important;
-    }
 }
