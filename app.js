@@ -1,12 +1,10 @@
 /* ============================================================
    課表查詢系統 - 主邏輯腳本 (app.js)
-   包含 CounterAPI 與 LocalStorage 雙軌瀏覽計數器
+   包含 CounterAPI 與 LocalStorage 雙軌瀏覽計數器 (免登入版)
    ============================================================ */
 
 // ── 全域狀態管理與組態 ─────────────────────────────────────────
 const CONFIG = {
-    // 預設系統密碼，若資料庫未定義則以此為準
-    DEFAULT_PASSWORD: 'mhjh',
     // CounterAPI 設定 (請將 workspace 替換為您的唯一名稱)
     COUNTER_API: {
         WORKSPACE: 'mhjh_schedule_system_2026',
@@ -34,27 +32,18 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function initApp() {
     bindEvents();
-    checkAuthSession();
+    checkAuthSession(); // 直接載入資料並顯示查詢頁面
 }
 
 /**
  * 繫結事件接聽器
  */
 function bindEvents() {
-    // 登入按鈕與 Enter 鍵事件
-    document.getElementById('loginBtn').addEventListener('click', handleLogin);
-    document.getElementById('passwordInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleLogin();
-    });
-
-    // 登出按鈕
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-
     // 返回按鈕
-    document.getElementById('backBtn').addEventListener('click', showQueryView);
+    document.getElementById('backBtn')?.addEventListener('click', showQueryView);
 
     // 列印按鈕
-    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('printBtn')?.addEventListener('click', () => window.print());
 
     // Tab 切換事件
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -77,16 +66,16 @@ function bindEvents() {
     });
 
     // 教師與專科教室下拉選單變更事件
-    document.getElementById('teacherSelect').addEventListener('change', (e) => {
+    document.getElementById('teacherSelect')?.addEventListener('change', (e) => {
         if (e.target.value) renderSchedule('teacher', e.target.value);
     });
 
-    document.getElementById('classroomSelect').addEventListener('change', (e) => {
+    document.getElementById('classroomSelect')?.addEventListener('change', (e) => {
         if (e.target.value) renderSchedule('classroom', e.target.value);
     });
 
     // Modal 關閉事件
-    document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+    document.getElementById('modalCloseBtn')?.addEventListener('click', closeModal);
     window.addEventListener('click', (e) => {
         const modal = document.getElementById('substituteModal');
         if (e.target === modal) closeModal();
@@ -133,36 +122,10 @@ async function initCounter() {
     }
 }
 
-// ── 身分驗證與頁面切換邏輯 ───────────────────────────────────────
+// ── 身分驗證與頁面切換邏輯 (已切換為免登入模式) ───────────────────
 function checkAuthSession() {
-    const isAuth = sessionStorage.getItem('mhjh_auth');
-    if (isAuth === 'true') {
-        loadScheduleData();
-    } else {
-        showView('loginView');
-    }
-}
-
-function handleLogin() {
-    const pwdInput = document.getElementById('passwordInput');
-    const errorEl = document.getElementById('loginError');
-    const inputPwd = pwdInput.value.trim();
-
-    const targetPwd = scheduleData.settings.password || CONFIG.DEFAULT_PASSWORD;
-
-    if (inputPwd === targetPwd || inputPwd === CONFIG.DEFAULT_PASSWORD) {
-        sessionStorage.setItem('mhjh_auth', 'true');
-        errorEl.textContent = '';
-        pwdInput.value = '';
-        loadScheduleData();
-    } else {
-        errorEl.textContent = '密碼錯誤，請重新輸入';
-    }
-}
-
-function handleLogout() {
-    sessionStorage.removeItem('mhjh_auth');
-    showView('loginView');
+    // 免密碼直接載入課表資料
+    loadScheduleData();
 }
 
 function showView(viewId) {
@@ -214,8 +177,12 @@ async function loadScheduleData() {
         
         const semesterEl = document.getElementById('semesterBadge');
         if (semesterEl) {
-            semesterEl.textContent = scheduleData.semester || '114 學年度第 2 學期';
+            semesterEl.textContent = scheduleData.semester || '課表查詢系統';
         }
+
+        // 隱藏登出按鈕（免密碼模式無需登出）
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) logoutBtn.style.display = 'none';
         
         showView('queryView');
     } catch (err) {
@@ -281,8 +248,10 @@ function renderSchedule(type, targetKey) {
     const homeroomEl = document.getElementById('homeroomTeacherInfo');
     const container = document.getElementById('scheduleTableContainer');
 
-    homeroomEl.classList.add('hidden');
-    homeroomEl.textContent = '';
+    if (homeroomEl) {
+        homeroomEl.classList.add('hidden');
+        homeroomEl.textContent = '';
+    }
 
     let titleText = '';
     let gridData = null;
@@ -292,7 +261,7 @@ function renderSchedule(type, targetKey) {
         const cData = scheduleData.classes[targetKey];
         if (cData) {
             gridData = cData.schedule;
-            if (cData.homeroomTeacher) {
+            if (cData.homeroomTeacher && homeroomEl) {
                 homeroomEl.textContent = `導師：${cData.homeroomTeacher}`;
                 homeroomEl.classList.remove('hidden');
             }
@@ -305,7 +274,7 @@ function renderSchedule(type, targetKey) {
         gridData = scheduleData.classrooms[targetKey]?.schedule;
     }
 
-    titleEl.textContent = titleText;
+    if (titleEl) titleEl.textContent = titleText;
 
     if (!gridData) {
         container.innerHTML = '<div style="text-align:center; padding:20px;">暫無課表資料</div>';
@@ -424,7 +393,7 @@ function openSubstituteModal(dayIdx, periodIdx, currentSubject, className) {
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
 
-    modalTitle.textContent = `星期${weekDays[dayIdx]}第${periodIdx + 1}節 空堂教師推薦`;
+    if (modalTitle) modalTitle.textContent = `星期${weekDays[dayIdx]}第${periodIdx + 1}節 空堂教師推薦`;
 
     const sameSubjectTeachers = [];
     const otherSubjectTeachers = [];
@@ -473,8 +442,8 @@ function openSubstituteModal(dayIdx, periodIdx, currentSubject, className) {
         bodyHtml += `<p style="font-size: 0.85rem; color: #64748b;">此節次無其他空堂教師</p>`;
     }
 
-    modalBody.innerHTML = bodyHtml;
-    document.getElementById('substituteModal').classList.add('show');
+    if (modalBody) modalBody.innerHTML = bodyHtml;
+    document.getElementById('substituteModal')?.classList.add('show');
 }
 
 function selectSubstituteTeacher(teacherName) {
@@ -483,7 +452,7 @@ function selectSubstituteTeacher(teacherName) {
 }
 
 function closeModal() {
-    document.getElementById('substituteModal').classList.remove('show');
+    document.getElementById('substituteModal')?.classList.remove('show');
 }
 
 // ── UI 工具函式 ────────────────────────────────────────────────
@@ -492,9 +461,11 @@ function showLoading(show, text = '資料載入中...') {
     const loadingText = document.getElementById('loadingText');
     if (loadingText) loadingText.textContent = text;
     
-    if (show) {
-        overlay.classList.add('show');
-    } else {
-        overlay.classList.remove('show');
+    if (overlay) {
+        if (show) {
+            overlay.classList.add('show');
+        } else {
+            overlay.classList.remove('show');
+        }
     }
 }
