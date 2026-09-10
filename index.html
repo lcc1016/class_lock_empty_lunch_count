@@ -5,151 +5,148 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>課表查詢系統 - 民雄國中</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        @media print {
-            .action-bar, .modal, .loading-overlay { display: none !important; }
-            body { background-color: #ffffff !important; padding: 0 !important; }
-            .result-card { box-shadow: none !important; padding: 0 !important; }
-        }
-    </style>
 </head>
 <body>
 
-    <!-- ══ 載入中遮罩 ══════════════════════════════════════════ -->
+    <!-- 全螢幕資料載入遮罩 -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
-        <div class="loading-text">資料載入中，請稍候...</div>
+        <div id="loadingText">系統資料載入中，請稍候...</div>
     </div>
 
-    <!-- ══ 1. 登入視圖 ══════════════════════════════════════════ -->
+    <!-- 1. 密碼驗證視圖 -->
     <div id="loginView" class="view-container active">
         <div class="login-card">
-            <h1 class="system-title">課表查詢系統</h1>
-            <p class="system-subtitle">請選擇學期並登入查詢</p>
-
-            <form id="loginForm" onsubmit="event.preventDefault();">
-                <div class="form-group">
-                    <label for="semesterSelect">學期選擇</label>
-                    <select id="semesterSelect" class="form-control">
-                        <!-- 由 JS 動態填入 -->
-                    </select>
-                </div>
-
+            <h1 class="system-title">民雄國中課表查詢系統</h1>
+            <p class="system-subtitle">請輸入系統密碼以繼續使用</p>
+            
+            <div class="form-group">
+                <input type="password" id="passwordInput" class="form-control" placeholder="請輸入密碼" autocomplete="current-password">
                 <div id="loginError" class="error-msg"></div>
+            </div>
+            
+            <button id="loginBtn" class="btn btn-primary btn-block">登入系統</button>
 
-                <button type="submit" id="loginBtn" class="btn btn-primary btn-block">
-                    <span id="loginSpinner" class="btn-spinner"></span>
-                    進入系統
-                </button>
-            </form>
-
-            <!-- ══ 新增：使用人次計數器區塊 ══ -->
-            <div class="counter-container">
-                <div class="counter-item">
-                    <span class="counter-value" id="monthCount">--</span>
-                    <span class="counter-label">本月查詢次數</span>
+            <!-- 瀏覽計數器展示區塊 -->
+            <div class="counter-footer">
+                <div class="counter-badge">
+                    <span>當月瀏覽:</span>
+                    <span id="monthCounter" class="count-num">--</span> 次
                 </div>
-                <div class="counter-divider"></div>
-                <div class="counter-item">
-                    <span class="counter-value" id="totalCount">--</span>
-                    <span class="counter-label">累計使用次數</span>
+                <div class="counter-badge">
+                    <span>累計瀏覽:</span>
+                    <span id="totalCounter" class="count-num">--</span> 次
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ══ 2. 查詢面板視圖 ══════════════════════════════════════ -->
+    <!-- 2. 課表查詢主頁面視圖 -->
     <div id="queryView" class="view-container">
         <div class="query-card">
             <div class="header-bar">
-                <span id="currentSemester" class="semester-badge"></span>
-                <button class="btn btn-outline-danger btn-sm" onclick="logout()">登出</button>
+                <span id="semesterBadge" class="semester-badge">載入中...</span>
+                <button id="logoutBtn" class="btn btn-outline-danger btn-sm">登出系統</button>
             </div>
 
+            <!-- Tab 切換頁籤 -->
             <div class="tab-header">
-                <button id="tabClass" class="tab-btn active" onclick="switchTab('class')">班級課表查詢</button>
-                <button id="tabTeacher" class="tab-btn" onclick="switchTab('teacher')">教師課表查詢</button>
+                <button class="tab-btn active" data-tab="classTab">班級課表</button>
+                <button class="tab-btn" data-tab="teacherTab">教師課表</button>
+                <button class="tab-btn" data-tab="classroomTab">專科教室</button>
             </div>
 
-            <!-- 班級查詢 Tab -->
-            <div id="panelClass" class="tab-panel">
+            <!-- Tab 內容 1：班級課表 -->
+            <div id="classTab" class="tab-content active">
                 <div class="query-grid">
                     <div class="form-group">
-                        <label for="sel7" class="grade-label grade-7">七年級</label>
-                        <select id="sel7" class="form-control"><option value="">— 選擇班級 —</option></select>
+                        <label class="grade-label grade-7">七年級</label>
+                        <select id="grade7Select" class="form-control class-select">
+                            <option value="">請選擇班級</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="sel8" class="grade-label grade-8">八年級</label>
-                        <select id="sel8" class="form-control"><option value="">— 選擇班級 —</option></select>
+                        <label class="grade-label grade-8">八年級</label>
+                        <select id="grade8Select" class="form-control class-select">
+                            <option value="">請選擇班級</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="sel9" class="grade-label grade-9">九年級</label>
-                        <select id="sel9" class="form-control"><option value="">— 選擇班級 —</option></select>
+                        <label class="grade-label grade-9">九年級</label>
+                        <select id="grade9Select" class="form-control class-select">
+                            <option value="">請選擇班級</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label for="selSp" class="grade-label grade-special">特殊班 / 其他</label>
-                        <select id="selSp" class="form-control"><option value="">— 選擇班級 —</option></select>
+                        <label class="grade-label grade-special">特殊班級</label>
+                        <select id="gradeSpecialSelect" class="form-control class-select">
+                            <option value="">請選擇班級</option>
+                        </select>
                     </div>
                 </div>
-                <div id="classError" class="error-msg"></div>
-                <button class="btn btn-primary btn-block mt-3" onclick="submitClassQuery()">查詢班級課表</button>
             </div>
 
-            <!-- 教師查詢 Tab -->
-            <div id="panelTeacher" class="tab-panel hidden">
+            <!-- Tab 內容 2：教師課表 -->
+            <div id="teacherTab" class="tab-content hidden">
                 <div class="query-grid-2">
                     <div class="form-group">
-                        <label for="subjectSelect">任教科目</label>
-                        <select id="subjectSelect" class="form-control" onchange="onSubjectChange()">
-                            <option value="">— 選擇科目 —</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="teacherSelect">教師姓名</label>
+                        <label for="teacherSelect">選擇教師</label>
                         <select id="teacherSelect" class="form-control">
-                            <option value="">— 選擇教師 —</option>
+                            <option value="">請選擇教師</option>
                         </select>
                     </div>
                 </div>
-                <div id="teacherError" class="error-msg"></div>
-                <button class="btn btn-primary btn-block mt-3" onclick="submitTeacherQuery()">查詢教師課表</button>
+            </div>
+
+            <!-- Tab 內容 3：專科教室課表 -->
+            <div id="classroomTab" class="tab-content hidden">
+                <div class="query-grid-2">
+                    <div class="form-group">
+                        <label for="classroomSelect">選擇專科教室</label>
+                        <select id="classroomSelect" class="form-control">
+                            <option value="">請選擇教室</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- ══ 3. 課表結果視圖 ══════════════════════════════════════ -->
+    <!-- 3. 課表結果展示視圖 -->
     <div id="resultView" class="view-container">
         <div class="result-card">
+            <!-- 頂部操作列 -->
             <div class="action-bar">
-                <button id="backBtn" class="btn btn-secondary" onclick="goBack()">← 返回上一頁</button>
-                <div>
-                    <button class="btn btn-outline" onclick="showQueryView()">回查詢頁</button>
-                    <button class="btn btn-primary" onclick="printSchedule()">列印課表</button>
-                </div>
+                <button id="backBtn" class="btn btn-secondary">← 返回查詢</button>
+                <button id="printBtn" class="btn btn-outline">列印課表</button>
             </div>
 
             <!-- 標題與導師資訊容器 -->
-            <div id="headerContainer" class="title-header-container">
-                <h2 id="scheduleTitle" class="schedule-title"></h2>
+            <div class="title-header-container">
+                <h2 id="scheduleTitle" class="schedule-title">課表名稱</h2>
+                <div id="homeroomTeacherInfo" class="homeroom-teacher-info hidden"></div>
             </div>
 
-            <!-- 課表動態渲染容器 -->
-            <div id="scheduleTableContainer" class="table-responsive"></div>
+            <!-- 課表表格容器 -->
+            <div id="scheduleTableContainer" class="table-responsive">
+                <!-- 動態繪製課表 Table -->
+            </div>
         </div>
     </div>
 
-    <!-- ══ 4. 可代課教師彈出視窗 (Modal) ════════════════════════ -->
-    <div id="subModal" class="modal" onclick="closeSubModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
+    <!-- 代課教師彈出視窗 (Modal) -->
+    <div id="substituteModal" class="modal">
+        <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle">可代課教師名單</h3>
-                <button type="button" class="modal-close" onclick="closeSubModal()">&times;</button>
+                <h3 id="modalTitle">無課教師推薦</h3>
+                <button id="modalCloseBtn" class="modal-close">&times;</button>
             </div>
-            <div id="modalBody" class="modal-body"></div>
+            <div id="modalBody" class="modal-body">
+                <!-- 動態注入同科目/其他科目無課教師按鈕 -->
+            </div>
         </div>
     </div>
 
-    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

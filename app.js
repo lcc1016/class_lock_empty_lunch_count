@@ -1,366 +1,500 @@
 /* ============================================================
    課表查詢系統 - 主邏輯腳本 (app.js)
+   包含 CounterAPI 與 LocalStorage 雙軌瀏覽計數器
    ============================================================ */
 
-let currentView = 'loginView';
-let viewHistory = [];
-let rawScheduleData = null;
-let currentSemester = '';
+// ── 全域狀態管理與組態 ─────────────────────────────────────────
+const CONFIG = {
+    // 預設系統密碼，若資料庫未定義則以此為準
+    DEFAULT_PASSWORD: 'mhjh',
+    // CounterAPI 設定 (請將 workspace 替換為您的唯一名稱)
+    COUNTER_API: {
+        WORKSPACE: 'mhjh_schedule_system_2026',
+        KEY: 'page_views'
+    }
+};
 
-// 節次對照表 (午休設為單獨特例)
-const PERIODS = [
-    { id: '1', name: '第一節', time: '08:15-09:00' },
-    { id: '2', name: '第二節', time: '09:10-09:55' },
-    { id: '3', name: '第三節', time: '10:10-10:55' },
-    { id: '4', name: '第四節', time: '11:05-11:50' },
-    { id: 'lunch', name: '午休時間', time: '12:00-12:40' }, // 恢復無課表跨欄
-    { id: '5', name: '第五節', time: '13:10-13:55' },
-    { id: '6', name: '第六節', time: '14:05-14:50' },
-    { id: '7', name: '第七節', time: '15:00-15:45' },
-    { id: '8', name: '第八節', time: '16:00-16:45' }
-];
+let scheduleData = {
+    semester: '',
+    teachers: {},
+    classes: {},
+    classrooms: {},
+    timeSlots: [],
+    settings: {}
+};
 
+// ── DOM 載入完成初始化 ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
+    initCounter(); // 初始化並更新瀏覽計數器
 });
 
+/**
+ * 應用程式初始化入口
+ */
 function initApp() {
-    loadSemesterOptions();
-    setupEventListeners();
-    fetchCounterData(); // 載入頁面時讀取點閱率計數器
+    bindEvents();
+    checkAuthSession();
 }
 
-function loadSemesterOptions() {
-    const semSelect = document.getElementById('semesterSelect');
-    if (!semSelect) return;
-    const semesters = (typeof CONFIG !== 'undefined' && CONFIG.semesters) ? CONFIG.semesters : ['113-1', '113-2'];
-    semSelect.innerHTML = semesters.map(sem => `<option value="${sem}">${sem} 學年度</option>`).join('');
+/**
+ * 繫結事件接聽器
+ */
+function bindEvents() {
+    // 登入按鈕與 Enter 鍵事件
+    document.getElementById('loginBtn').addEventListener('click', handleLogin);
+    document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleLogin();
+    });
+
+    // 登出按鈕
+    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+
+    // 返回按鈕
+    document.getElementById('backBtn').addEventListener('click', showQueryView);
+
+    // 列印按鈕
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+    // Tab 切換事件
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            switchTab(e.target.dataset.tab);
+        });
+    });
+
+    // 班級下拉選單變更事件
+    document.querySelectorAll('.class-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            if (e.target.value) {
+                // 清空其他年級選單的選取狀態
+                document.querySelectorAll('.class-select').forEach(s => {
+                    if (s !== e.target) s.value = '';
+                });
+                renderSchedule('class', e.target.value);
+            }
+        });
+    });
+
+    // 教師與專科教室下拉選單變更事件
+    document.getElementById('teacherSelect').addEventListener('change', (e) => {
+        if (e.target.value) renderSchedule('teacher', e.target.value);
+    });
+
+    document.getElementById('classroomSelect').addEventListener('change', (e) => {
+        if (e.target.value) renderSchedule('classroom', e.target.value);
+    });
+
+    // Modal 關閉事件
+    document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('substituteModal');
+        if (e.target === modal) closeModal();
+    });
 }
 
-function setupEventListeners() {
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
+// ── 瀏覽計數器邏輯 (CounterAPI + LocalStorage) ───────────────────
+/**
+ * 初始化瀏覽計數器
+ * 結合 CounterAPI (全站遠端累計) 與 LocalStorage (當月計數及備援)
+ */
+async function initCounter() {
+    const totalEl = document.getElementById('totalCounter');
+    const monthEl = document.getElementById('monthCounter');
+
+    const now = new Date();
+    const currentMonthKey = `pv_month_${now.getFullYear()}_${now.getMonth() + 1}`;
+    
+    // 1. 處理當月計數器 (LocalStorage 本地計算)
+    let monthCount = parseInt(localStorage.getItem(currentMonthKey) || '0', 10);
+    monthCount += 1;
+    localStorage.setItem(currentMonthKey, monthCount.toString());
+    if (monthEl) monthEl.textContent = monthCount.toLocaleString();
+
+    // 2. 處理累計總瀏覽量 (優先呼叫 CounterAPI，失敗時轉 LocalStorage 備援)
+    let totalCount = parseInt(localStorage.getItem('pv_total_fallback') || '0', 10) + 1;
+    localStorage.setItem('pv_total_fallback', totalCount.toString());
+
+    try {
+        const url = `https://api.counterapi.dev/v1/${CONFIG.COUNTER_API.WORKSPACE}/${CONFIG.COUNTER_API.KEY}/up`;
+        const response = await fetch(url);
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data && typeof data.count === 'number') {
+                if (totalEl) totalEl.textContent = data.count.toLocaleString();
+                return;
+            }
+        }
+        throw new Error('CounterAPI 回應異常');
+    } catch (err) {
+        console.warn('CounterAPI 無法連線，切換為本地備援計數:', err);
+        if (totalEl) totalEl.textContent = totalCount.toLocaleString();
     }
 }
 
-// 讀取/更新使用計數器 (範例使用 LocalStorage，可改接 GAS/API)
-function fetchCounterData() {
-    let monthCount = parseInt(localStorage.getItem('sys_month_count') || '128');
-    let totalCount = parseInt(localStorage.getItem('sys_total_count') || '2540');
-
-    document.getElementById('monthCount').innerText = monthCount.toLocaleString();
-    document.getElementById('totalCount').innerText = totalCount.toLocaleString();
-}
-
-function incrementCounter() {
-    let monthCount = parseInt(localStorage.getItem('sys_month_count') || '128') + 1;
-    let totalCount = parseInt(localStorage.getItem('sys_total_count') || '2540') + 1;
-
-    localStorage.setItem('sys_month_count', monthCount);
-    localStorage.setItem('sys_total_count', totalCount);
-
-    document.getElementById('monthCount').innerText = monthCount.toLocaleString();
-    document.getElementById('totalCount').innerText = totalCount.toLocaleString();
-}
-
-function handleLogin(e) {
-    if (e) e.preventDefault();
-    const semSelect = document.getElementById('semesterSelect');
-    currentSemester = semSelect.value;
-    
-    showLoading(true);
-
-    // 每次進入系統累加一次查詢計數
-    incrementCounter();
-    
-    setTimeout(() => {
-        document.getElementById('currentSemester').innerText = `${currentSemester} 學年度`;
-        showLoading(false);
-        switchView('queryView');
-        populateQueryDropdowns();
-    }, 500);
-}
-
-function switchTab(tabType) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
-
-    if (tabType === 'class') {
-        document.getElementById('tabClass').classList.add('active');
-        document.getElementById('panelClass').classList.remove('hidden');
+// ── 身分驗證與頁面切換邏輯 ───────────────────────────────────────
+function checkAuthSession() {
+    const isAuth = sessionStorage.getItem('mhjh_auth');
+    if (isAuth === 'true') {
+        loadScheduleData();
     } else {
-        document.getElementById('tabTeacher').classList.add('active');
-        document.getElementById('panelTeacher').classList.remove('hidden');
+        showView('loginView');
     }
 }
 
-function populateQueryDropdowns() {
-    const sel7 = document.getElementById('sel7');
-    const sel8 = document.getElementById('sel8');
-    const sel9 = document.getElementById('sel9');
-    const selSp = document.getElementById('selSp');
-    const subjectSelect = document.getElementById('subjectSelect');
+function handleLogin() {
+    const pwdInput = document.getElementById('passwordInput');
+    const errorEl = document.getElementById('loginError');
+    const inputPwd = pwdInput.value.trim();
 
-    if (sel7) sel7.innerHTML = '<option value="">— 選擇班級 —</option><option value="701">701</option><option value="702">702</option>';
-    if (sel8) sel8.innerHTML = '<option value="">— 選擇班級 —</option><option value="801">801</option><option value="802">802</option>';
-    if (sel9) sel9.innerHTML = '<option value="">— 選擇班級 —</option><option value="901">901</option><option value="902">902</option>';
-    if (selSp) selSp.innerHTML = '<option value="">— 選擇班級 —</option><option value="特1">特教班</option>';
-    
-    if (subjectSelect) {
-        subjectSelect.innerHTML = `
-            <option value="">— 選擇科目 —</option>
-            <option value="國文">國文</option>
-            <option value="英文">英文</option>
-            <option value="數學">數學</option>
-        `;
+    const targetPwd = scheduleData.settings.password || CONFIG.DEFAULT_PASSWORD;
+
+    if (inputPwd === targetPwd || inputPwd === CONFIG.DEFAULT_PASSWORD) {
+        sessionStorage.setItem('mhjh_auth', 'true');
+        errorEl.textContent = '';
+        pwdInput.value = '';
+        loadScheduleData();
+    } else {
+        errorEl.textContent = '密碼錯誤，請重新輸入';
     }
 }
 
-function onSubjectChange() {
-    const subject = document.getElementById('subjectSelect').value;
-    const teacherSelect = document.getElementById('teacherSelect');
-    if (!teacherSelect) return;
-
-    if (!subject) {
-        teacherSelect.innerHTML = '<option value="">— 選擇教師 —</option>';
-        return;
-    }
-
-    const mockTeachers = ['王老師', '李老師', '張老師'];
-    teacherSelect.innerHTML = '<option value="">— 選擇教師 —</option>' + 
-        mockTeachers.map(t => `<option value="${t}">${t}</option>`).join('');
+function handleLogout() {
+    sessionStorage.removeItem('mhjh_auth');
+    showView('loginView');
 }
 
-function submitClassQuery() {
-    const c7 = document.getElementById('sel7').value;
-    const c8 = document.getElementById('sel8').value;
-    const c9 = document.getElementById('sel9').value;
-    const cSp = document.getElementById('selSp').value;
+function showView(viewId) {
+    document.querySelectorAll('.view-container').forEach(v => {
+        v.classList.remove('active', 'result-active');
+    });
 
-    const selectedClass = c7 || c8 || c9 || cSp;
-    const errorElem = document.getElementById('classError');
-
-    if (!selectedClass) {
-        if (errorElem) errorElem.innerText = '請選擇一個班級進行查詢';
-        return;
+    const targetView = document.getElementById(viewId);
+    if (targetView) {
+        if (viewId === 'resultView') {
+            targetView.classList.add('active', 'result-active');
+        } else {
+            targetView.classList.add('active');
+        }
     }
-    if (errorElem) errorElem.innerText = '';
-
-    renderSchedule('class', selectedClass);
 }
 
-function submitTeacherQuery() {
-    const teacher = document.getElementById('teacherSelect').value;
-    const errorElem = document.getElementById('teacherError');
-
-    if (!teacher) {
-        if (errorElem) errorElem.innerText = '請選擇教師姓名';
-        return;
-    }
-    if (errorElem) errorElem.innerText = '';
-
-    renderSchedule('teacher', teacher);
+function showQueryView() {
+    // 重置所有選單選擇
+    document.querySelectorAll('select').forEach(s => s.value = '');
+    showView('queryView');
 }
 
-// 課表渲染邏輯：午休恢復跨 5 欄 (Colspan=5)
-function renderSchedule(type, targetName) {
-    const titleElem = document.getElementById('scheduleTitle');
-    const headerContainer = document.getElementById('headerContainer');
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+
+    document.querySelectorAll('.tab-content').forEach(content => {
+        if (content.id === tabId) {
+            content.classList.remove('hidden');
+            content.classList.add('active');
+        } else {
+            content.classList.add('hidden');
+            content.classList.remove('active');
+        }
+    });
+}
+
+// ── 資料載入與下拉選單填入 ───────────────────────────────────────
+async function loadScheduleData() {
+    showLoading(true, '載入課表資料中...');
+    try {
+        const response = await fetch('data.json');
+        if (!response.ok) throw new Error('無法讀取 data.json');
+        scheduleData = await response.json();
+        
+        populateDropdowns();
+        
+        const semesterEl = document.getElementById('semesterBadge');
+        if (semesterEl) {
+            semesterEl.textContent = scheduleData.semester || '114 學年度第 2 學期';
+        }
+        
+        showView('queryView');
+    } catch (err) {
+        console.error('資料載入失敗:', err);
+        alert('課表資料載入失敗，請確認 data.json 檔案是否存在。');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function populateDropdowns() {
+    // 1. 填入班級選單
+    const g7 = document.getElementById('grade7Select');
+    const g8 = document.getElementById('grade8Select');
+    const g9 = document.getElementById('grade9Select');
+    const gSpec = document.getElementById('gradeSpecialSelect');
+
+    [g7, g8, g9, gSpec].forEach(select => {
+        if (select) select.innerHTML = '<option value="">請選擇班級</option>';
+    });
+
+    if (scheduleData.classes) {
+        Object.keys(scheduleData.classes).forEach(className => {
+            const opt = document.createElement('option');
+            opt.value = className;
+            opt.textContent = className;
+
+            if (className.startsWith('7') || className.startsWith('七')) g7?.appendChild(opt);
+            else if (className.startsWith('8') || className.startsWith('八')) g8?.appendChild(opt);
+            else if (className.startsWith('9') || className.startsWith('九')) g9?.appendChild(opt);
+            else gSpec?.appendChild(opt);
+        });
+    }
+
+    // 2. 填入教師選單
+    const teacherSel = document.getElementById('teacherSelect');
+    if (teacherSel && scheduleData.teachers) {
+        teacherSel.innerHTML = '<option value="">請選擇教師</option>';
+        Object.keys(scheduleData.teachers).sort().forEach(tName => {
+            const opt = document.createElement('option');
+            opt.value = tName;
+            opt.textContent = tName;
+            teacherSel.appendChild(opt);
+        });
+    }
+
+    // 3. 填入專科教室選單
+    const roomSel = document.getElementById('classroomSelect');
+    if (roomSel && scheduleData.classrooms) {
+        roomSel.innerHTML = '<option value="">請選擇教室</option>';
+        Object.keys(scheduleData.classrooms).sort().forEach(rName => {
+            const opt = document.createElement('option');
+            opt.value = rName;
+            opt.textContent = rName;
+            roomSel.appendChild(opt);
+        });
+    }
+}
+
+// ── 課表繪製核心邏輯 ───────────────────────────────────────────
+function renderSchedule(type, targetKey) {
+    const titleEl = document.getElementById('scheduleTitle');
+    const homeroomEl = document.getElementById('homeroomTeacherInfo');
     const container = document.getElementById('scheduleTableContainer');
 
-    titleElem.innerText = type === 'class' ? `${targetName} 班級課表` : `${targetName} 老師課表`;
+    homeroomEl.classList.add('hidden');
+    homeroomEl.textContent = '';
 
-    const existingHomeroom = document.querySelector('.homeroom-teacher-info');
-    if (existingHomeroom) existingHomeroom.remove();
+    let titleText = '';
+    let gridData = null;
 
     if (type === 'class') {
-        const homeroomDiv = document.createElement('div');
-        homeroomDiv.className = 'homeroom-teacher-info';
-        homeroomDiv.innerText = `導師：${getHomeroomTeacher(targetName)}`;
-        headerContainer.appendChild(homeroomDiv);
+        titleText = `${targetKey} 課表`;
+        const cData = scheduleData.classes[targetKey];
+        if (cData) {
+            gridData = cData.schedule;
+            if (cData.homeroomTeacher) {
+                homeroomEl.textContent = `導師：${cData.homeroomTeacher}`;
+                homeroomEl.classList.remove('hidden');
+            }
+        }
+    } else if (type === 'teacher') {
+        titleText = `${targetKey} 老師課表`;
+        gridData = scheduleData.teachers[targetKey]?.schedule;
+    } else if (type === 'classroom') {
+        titleText = `${targetKey} 課表`;
+        gridData = scheduleData.classrooms[targetKey]?.schedule;
     }
 
-    let tableHtml = `
+    titleEl.textContent = titleText;
+
+    if (!gridData) {
+        container.innerHTML = '<div style="text-align:center; padding:20px;">暫無課表資料</div>';
+        showView('resultView');
+        return;
+    }
+
+    const timeSlots = scheduleData.timeSlots || [
+        { period: '一', time: '08:25-09:10' },
+        { period: '二', time: '09:20-10:05' },
+        { period: '三', time: '10:15-11:00' },
+        { period: '四', time: '11:10-11:55' },
+        { period: '午休', time: '12:00-13:00', isLunch: true },
+        { period: '五', time: '13:10-13:55' },
+        { period: '六', time: '14:05-14:50' },
+        { period: '七', time: '15:00-15:45' }
+    ];
+
+    const weekDays = ['一', '二', '三', '四', '五'];
+
+    let html = `
         <table class="schedule-table">
             <thead>
                 <tr>
                     <th class="th-period">節次</th>
-                    <th>星期一</th>
-                    <th>星期二</th>
-                    <th>星期三</th>
-                    <th>星期四</th>
-                    <th>星期五</th>
+                    ${weekDays.map(d => `<th>星期${d}</th>`).join('')}
                 </tr>
             </thead>
             <tbody>
     `;
 
-    PERIODS.forEach(period => {
-        if (period.id === 'lunch') {
-            // 午休沒排課：使用 colspan="5" 跨欄
-            tableHtml += `
+    timeSlots.forEach((slot, pIdx) => {
+        if (slot.isLunch) {
+            html += `
                 <tr class="tr-lunch">
-                    <td class="td-period td-lunch-period">
-                        <span class="period-num">${period.name}</span>
-                        <span class="period-time">${period.time}</span>
+                    <td class="td-period">
+                        <span class="period-num">${slot.period}</span>
+                        <span class="period-time">${slot.time}</span>
                     </td>
-                    <td colspan="5" class="td-lunch-bar">午休 / 午膳時間</td>
+                    <td colspan="5" class="td-lunch">午餐與午休時間</td>
                 </tr>
             `;
-        } else {
-            tableHtml += `<tr>`;
-            tableHtml += `
-                <td class="td-period">
-                    <span class="period-num">${period.name}節</span>
-                    <span class="period-time">${period.time}</span>
-                </td>
-            `;
-
-            for (let day = 1; day <= 5; day++) {
-                const cellData = getCellData(type, targetName, day, period.id);
-
-                if (cellData) {
-                    const cellLockedClass = cellData.isLocked ? 'cell-locked' : '';
-                    tableHtml += `
-                        <td class="td-cell ${cellLockedClass}">
-                            <div class="cell-main-info">
-                                <span class="cell-subject ${cellData.clickable ? 'clickable-subject' : ''}"
-                                      onclick="handleSubjectClick('${day}', '${period.id}', '${cellData.subject}')">
-                                    ${cellData.subject}
-                                    ${cellData.isLocked ? '<span class="lock-tag">綁</span>' : ''}
-                                </span>
-                                <div class="cell-items-container">
-                                    <span class="cell-link" onclick="handleLinkClick('${type}', '${cellData.detailLink}')">
-                                        ${cellData.detailLink}
-                                    </span>
-                                </div>
-                            </div>
-                        </td>
-                    `;
-                } else {
-                    tableHtml += `<td class="td-empty"></td>`;
-                }
-            }
-            tableHtml += `</tr>`;
+            return;
         }
+
+        html += `<tr>`;
+        html += `
+            <td class="td-period">
+                <span class="period-num">${slot.period}</span>
+                <span class="period-time">${slot.time}</span>
+            </td>
+        `;
+
+        weekDays.forEach((day, dIdx) => {
+            const cell = gridData[dIdx] ? gridData[dIdx][pIdx] : null;
+
+            if (!cell || (!cell.subject && !cell.teacher && !cell.className)) {
+                html += `<td class="td-empty"></td>`;
+            } else {
+                const isLocked = cell.isLocked ? 'cell-locked' : '';
+                html += `<td class="td-cell ${isLocked}">`;
+                html += `<div class="cell-main-info">`;
+
+                if (cell.subject) {
+                    const clickAttr = (type === 'class') ? `onclick="openSubstituteModal(${dIdx}, ${pIdx}, '${cell.subject}', '${targetKey}')"` : '';
+                    const clickClass = (type === 'class') ? 'clickable-subject' : '';
+                    html += `
+                        <div class="cell-subject ${clickClass}" ${clickAttr}>
+                            ${cell.subject}
+                            ${cell.isLocked ? '<span class="lock-tag bind-tag">[綁]</span>' : ''}
+                        </div>
+                    `;
+                }
+
+                if (type === 'class' && cell.teacher) {
+                    html += `<div class="cell-items-container">`;
+                    cell.teacher.split(',').forEach(t => {
+                        const trimmed = t.trim();
+                        if (trimmed) {
+                            html += `<span class="cell-link" onclick="renderSchedule('teacher', '${trimmed}')">${trimmed}</span>`;
+                        }
+                    });
+                    html += `</div>`;
+                } else if (type === 'teacher' && cell.className) {
+                    html += `<div class="cell-items-container">`;
+                    cell.className.split(',').forEach(c => {
+                        const trimmed = c.trim();
+                        if (trimmed) {
+                            html += `<span class="cell-link" onclick="renderSchedule('class', '${trimmed}')">${trimmed}</span>`;
+                        }
+                    });
+                    html += `</div>`;
+                } else if (type === 'classroom' && (cell.className || cell.teacher)) {
+                    html += `<div class="cell-items-container">`;
+                    if (cell.className) html += `<span class="cell-link" onclick="renderSchedule('class', '${cell.className}')">${cell.className}</span>`;
+                    if (cell.teacher) html += `<span class="cell-link" onclick="renderSchedule('teacher', '${cell.teacher}')">${cell.teacher}</span>`;
+                    html += `</div>`;
+                }
+
+                html += `</div></td>`;
+            }
+        });
+
+        html += `</tr>`;
     });
 
-    tableHtml += `
-            </tbody>
-        </table>
-    `;
+    html += `</tbody></table>`;
+    container.innerHTML = html;
 
-    container.innerHTML = tableHtml;
-    switchView('resultView');
+    showView('resultView');
 }
 
-function getCellData(type, targetName, day, periodId) {
-    if (day === 1 && periodId === '1') {
-        return { subject: '國文', detailLink: type === 'class' ? '張老師' : '701班', clickable: true, isLocked: false };
-    }
-    if (day === 3 && periodId === '2') {
-        return { subject: '體育', detailLink: type === 'class' ? '陳老師' : '802班', clickable: true, isLocked: true };
-    }
-    return null;
-}
-
-function getHomeroomTeacher(className) {
-    const mockHomerooms = { '701': '林老師', '702': '陳老師', '801': '黃老師', '802': '張老師', '901': '王老師' };
-    return mockHomerooms[className] || '無導師';
-}
-
-function handleSubjectClick(day, periodId, subjectName) {
-    const modal = document.getElementById('subModal');
+// ── 代課無課教師推薦 Modal 邏輯 ──────────────────────────────────
+function openSubstituteModal(dayIdx, periodIdx, currentSubject, className) {
+    const weekDays = ['一', '二', '三', '四', '五'];
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
 
-    if (!modal) return;
+    modalTitle.textContent = `星期${weekDays[dayIdx]}第${periodIdx + 1}節 空堂教師推薦`;
 
-    modalTitle.innerText = `星期${getDayChinese(day)} 第${periodId}節 — ${subjectName}（可代課教師）`;
-    modalBody.innerHTML = `
-        <p style="margin-bottom: 10px; font-size: 0.9rem; color: #64748b;">【原科目/同科空堂教師】</p>
-        <div>
-            <button class="btn-teacher-tag btn-primary-subject" onclick="selectSubTeacher('張老師')">張老師</button>
-            <button class="btn-teacher-tag btn-primary-subject" onclick="selectSubTeacher('王老師')">王老師</button>
-        </div>
-    `;
-    modal.classList.add('show');
-}
+    const sameSubjectTeachers = [];
+    const otherSubjectTeachers = [];
 
-function handleLinkClick(currentType, targetName) {
-    if (currentType === 'class') renderSchedule('teacher', targetName);
-    else renderSchedule('class', targetName);
-}
+    // 1. 比對無課教師
+    Object.keys(scheduleData.teachers).forEach(tName => {
+        const teacher = scheduleData.teachers[tName];
+        const teacherSchedule = teacher.schedule;
+        
+        // 判斷該節次是否空堂
+        const cell = teacherSchedule[dayIdx] ? teacherSchedule[dayIdx][periodIdx] : null;
+        const isFree = !cell || (!cell.subject && !cell.className);
 
-function selectSubTeacher(teacherName) {
-    alert(`已選擇代課教師：${teacherName}`);
-    closeSubModal();
-}
-
-function closeSubModal(e) {
-    if (e && e.target !== e.currentTarget && e.type === 'click') return;
-    const modal = document.getElementById('subModal');
-    if (modal) modal.classList.remove('show');
-}
-
-function switchView(viewId) {
-    document.querySelectorAll('.view-container').forEach(v => {
-        v.classList.remove('active');
-        v.classList.remove('result-active');
+        if (isFree) {
+            if (teacher.subjects && teacher.subjects.includes(currentSubject)) {
+                sameSubjectTeachers.push(tName);
+            } else {
+                otherSubjectTeachers.push(tName);
+            }
+        }
     });
 
-    const targetView = document.getElementById(viewId);
-    if (!targetView) return;
+    let bodyHtml = '';
 
-    if (viewId === 'resultView') targetView.classList.add('result-active');
-    else targetView.classList.add('active');
-
-    if (currentView !== viewId) {
-        viewHistory.push(currentView);
-        currentView = viewId;
-    }
-}
-
-function goBack() {
-    if (viewHistory.length > 0) {
-        const previous = viewHistory.pop();
-        currentView = previous;
-        document.querySelectorAll('.view-container').forEach(v => {
-            v.classList.remove('active');
-            v.classList.remove('result-active');
+    // 2. 渲染同科目教師
+    bodyHtml += `<div style="font-weight: bold; margin-bottom: 8px; color: #0284c7;">【同科目無課教師 (${currentSubject})】</div>`;
+    if (sameSubjectTeachers.length > 0) {
+        bodyHtml += `<div style="margin-bottom: 16px;">`;
+        sameSubjectTeachers.forEach(t => {
+            bodyHtml += `<button class="btn-teacher-tag btn-primary-subject" onclick="selectSubstituteTeacher('${t}')">${t}</button>`;
         });
-        const targetView = document.getElementById(previous);
-        if (previous === 'resultView') targetView.classList.add('result-active');
-        else targetView.classList.add('active');
+        bodyHtml += `</div>`;
     } else {
-        showQueryView();
+        bodyHtml += `<p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">此節次無同科目空堂教師</p>`;
     }
+
+    // 3. 渲染其他科目無課教師
+    bodyHtml += `<div style="font-weight: bold; margin-bottom: 8px; color: #d97706;">【該班其他科目/其他領域無課教師】</div>`;
+    if (otherSubjectTeachers.length > 0) {
+        bodyHtml += `<div>`;
+        otherSubjectTeachers.forEach(t => {
+            bodyHtml += `<button class="btn-teacher-tag btn-other-subject" onclick="selectSubstituteTeacher('${t}')">${t}</button>`;
+        });
+        bodyHtml += `</div>`;
+    } else {
+        bodyHtml += `<p style="font-size: 0.85rem; color: #64748b;">此節次無其他空堂教師</p>`;
+    }
+
+    modalBody.innerHTML = bodyHtml;
+    document.getElementById('substituteModal').classList.add('show');
 }
 
-function showQueryView() {
-    viewHistory = [];
-    switchView('queryView');
+function selectSubstituteTeacher(teacherName) {
+    closeModal();
+    renderSchedule('teacher', teacherName);
 }
 
-function logout() {
-    viewHistory = [];
-    switchView('loginView');
+function closeModal() {
+    document.getElementById('substituteModal').classList.remove('show');
 }
 
-function printSchedule() {
-    window.print();
-}
-
-function showLoading(show) {
+// ── UI 工具函式 ────────────────────────────────────────────────
+function showLoading(show, text = '資料載入中...') {
     const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        if (show) overlay.classList.add('show');
-        else overlay.classList.remove('show');
+    const loadingText = document.getElementById('loadingText');
+    if (loadingText) loadingText.textContent = text;
+    
+    if (show) {
+        overlay.classList.add('show');
+    } else {
+        overlay.classList.remove('show');
     }
-}
-
-function getDayChinese(day) {
-    const map = { '1': '一', '2': '二', '3': '三', '4': '四', '5': '五' };
-    return map[day] || day;
 }
