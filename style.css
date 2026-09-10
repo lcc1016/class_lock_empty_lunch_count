@@ -87,11 +87,11 @@ body {
 }
 
 .view-container.active {
-    display: flex;
+    display: flex !important;
 }
 
 .view-container.result-active {
-    display: block;
+    display: block !important;
     max-width: 1100px;
 }
 

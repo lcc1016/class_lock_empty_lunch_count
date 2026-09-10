@@ -3,94 +3,36 @@
    民雄國中
    ============================================================ */
 
-document.addEventListener("DOMContentLoaded", () => {
-    // 1. 初始化頁面，載入瀏覽次數
+// 頁面載入後自動執行非同步任務
+window.addEventListener("load", () => {
     fetchViewsCount();
-
-    // 2. 註冊登入按鈕事件
-    const loginBtn = document.getElementById("loginBtn");
-    if (loginBtn) {
-        loginBtn.addEventListener("click", handleLogin);
-    }
-
-    // 3. 註冊 Tab 標籤切換
-    const tabBtns = document.querySelectorAll(".tab-btn");
-    tabBtns.forEach(btn => {
-        btn.addEventListener("click", (e) => switchTab(e.target.dataset.tab));
-    });
-
-    // 4. 註冊 Modal 關閉事件
-    const closeModalBtn = document.getElementById("closeModalBtn");
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener("click", closeModal);
-    }
-
-    // 5. 返回與列印按鈕
-    const backBtn = document.getElementById("backBtn");
-    if (backBtn) {
-        backBtn.addEventListener("click", showQueryView);
-    }
-
-    const printBtn = document.getElementById("printBtn");
-    if (printBtn) {
-        printBtn.addEventListener("click", () => window.print());
-    }
 });
 
 /**
- * 從後端/API 取得當月與累計瀏覽次數並顯示
- */
-async function fetchViewsCount() {
-    const monthlyEl = document.getElementById("monthlyViews");
-    const totalEl = document.getElementById("totalViews");
-
-    try {
-        /* 
-           💡 實際串接時，解開下方註解並填入你的 API URL (如 Google Apps Script):
-           
-           const response = await fetch("https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getViews");
-           const data = await response.json();
-        */
-
-        // 模擬伺服器傳回的點閱數據
-        const data = {
-            monthlyViews: 1280,
-            totalViews: 45200
-        };
-
-        // 填入數值並加上千分位逗號
-        if (monthlyEl) monthlyEl.textContent = Number(data.monthlyViews).toLocaleString();
-        if (totalEl) totalEl.textContent = Number(data.totalViews).toLocaleString();
-
-    } catch (error) {
-        console.error("無法取得瀏覽次數:", error);
-        if (monthlyEl) monthlyEl.textContent = "0";
-        if (totalEl) totalEl.textContent = "0";
-    }
-}
-
-/**
- * 處理登入動作
+ * 處理登入點擊動作 (開放全域呼叫，確保點擊必能觸發)
  */
 function handleLogin() {
-    const semester = document.getElementById("semesterSelect").value;
+    const semesterSelect = document.getElementById("semesterSelect");
     const loginError = document.getElementById("loginError");
+    const semester = semesterSelect ? semesterSelect.value : "";
 
     if (!semester) {
         if (loginError) loginError.textContent = "請選擇學期！";
         return;
     }
 
+    if (loginError) loginError.textContent = "";
+
     showLoading(true);
 
-    // 模擬驗證並切換至查詢頁
+    // 切換至查詢視圖
     setTimeout(() => {
         showLoading(false);
         const badge = document.getElementById("currentSemesterBadge");
         if (badge) badge.textContent = semester;
 
         switchView("queryView");
-    }, 500);
+    }, 400);
 }
 
 /**
@@ -137,6 +79,37 @@ function switchTab(tabType) {
     } else {
         if (classTab) classTab.classList.add("hidden");
         if (teacherTab) teacherTab.classList.remove("hidden");
+    }
+}
+
+/**
+ * 從後端/API 取得當月與累計瀏覽次數並顯示
+ */
+async function fetchViewsCount() {
+    const monthlyEl = document.getElementById("monthlyViews");
+    const totalEl = document.getElementById("totalViews");
+
+    try {
+        /* 
+           💡 實際串接時，解開下方註解並填入你的 API URL:
+           
+           const response = await fetch("https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getViews");
+           const data = await response.json();
+        */
+
+        // 模擬伺服器點閱數據
+        const data = {
+            monthlyViews: 1280,
+            totalViews: 45200
+        };
+
+        if (monthlyEl) monthlyEl.textContent = Number(data.monthlyViews).toLocaleString();
+        if (totalEl) totalEl.textContent = Number(data.totalViews).toLocaleString();
+
+    } catch (error) {
+        console.error("無法取得瀏覽次數:", error);
+        if (monthlyEl) monthlyEl.textContent = "0";
+        if (totalEl) totalEl.textContent = "0";
     }
 }
 

@@ -14,7 +14,7 @@
         <div>資料載入中，請稍候...</div>
     </div>
 
-    <!-- 登入視圖 -->
+    <!-- 1. 登入視圖 -->
     <div id="loginView" class="view-container active">
         <div class="login-card">
             <h1 class="system-title">課表查詢系統</h1>
@@ -36,7 +36,8 @@
                     <span id="monthlyViews" class="counter-value">--</span>
                 </div>
 
-                <button id="loginBtn" class="btn btn-primary">進入系統</button>
+                <!-- 直接加上 onclick="handleLogin()" 確保必定能觸發 -->
+                <button id="loginBtn" class="btn btn-primary" onclick="handleLogin()">進入系統</button>
 
                 <div class="counter-box total-counter">
                     <span class="counter-label">累計瀏覽</span>
@@ -48,7 +49,7 @@
         </div>
     </div>
 
-    <!-- 查詢視圖 (預設隱藏) -->
+    <!-- 2. 查詢視圖 -->
     <div id="queryView" class="view-container">
         <div class="query-card">
             <div class="header-bar">
@@ -57,8 +58,8 @@
             </div>
             
             <div class="tab-header">
-                <button class="tab-btn active" data-tab="class">班級課表</button>
-                <button class="tab-btn" data-tab="teacher">教師課表</button>
+                <button class="tab-btn active" data-tab="class" onclick="switchTab('class')">班級課表</button>
+                <button class="tab-btn" data-tab="teacher" onclick="switchTab('teacher')">教師課表</button>
             </div>
 
             <div id="classTab" class="tab-content">
@@ -91,12 +92,12 @@
         </div>
     </div>
 
-    <!-- 課表結果視圖 (預設隱藏) -->
+    <!-- 3. 課表結果視圖 -->
     <div id="resultView" class="view-container">
         <div class="result-card">
             <div class="action-bar">
-                <button id="backBtn" class="btn btn-outline">← 返回查詢</button>
-                <button id="printBtn" class="btn btn-secondary">列印課表</button>
+                <button id="backBtn" class="btn btn-outline" onclick="showQueryView()">← 返回查詢</button>
+                <button id="printBtn" class="btn btn-secondary" onclick="window.print()">列印課表</button>
             </div>
 
             <div class="title-header-container">
@@ -115,7 +116,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>選擇代課教師</h3>
-                <button id="closeModalBtn" class="modal-close">&times;</button>
+                <button id="closeModalBtn" class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             <div id="modalBody" class="modal-body">
                 <!-- 動態注入空堂教師列表 -->
