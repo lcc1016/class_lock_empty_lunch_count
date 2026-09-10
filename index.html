@@ -14,39 +14,11 @@
         <div id="loadingText">系統資料載入中，請稍候...</div>
     </div>
 
-    <!-- 1. 密碼驗證視圖 -->
-    <div id="loginView" class="view-container active">
-        <div class="login-card">
-            <h1 class="system-title">民雄國中課表查詢系統</h1>
-            <p class="system-subtitle">請輸入系統密碼以繼續使用</p>
-            
-            <div class="form-group">
-                <input type="password" id="passwordInput" class="form-control" placeholder="請輸入密碼" autocomplete="current-password">
-                <div id="loginError" class="error-msg"></div>
-            </div>
-            
-            <button id="loginBtn" class="btn btn-primary btn-block">登入系統</button>
-
-            <!-- 瀏覽計數器展示區塊 -->
-            <div class="counter-footer">
-                <div class="counter-badge">
-                    <span>當月瀏覽:</span>
-                    <span id="monthCounter" class="count-num">--</span> 次
-                </div>
-                <div class="counter-badge">
-                    <span>累計瀏覽:</span>
-                    <span id="totalCounter" class="count-num">--</span> 次
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. 課表查詢主頁面視圖 -->
-    <div id="queryView" class="view-container">
+    <!-- 課表查詢主頁面視圖 (已設定為預設顯示 active) -->
+    <div id="queryView" class="view-container active">
         <div class="query-card">
             <div class="header-bar">
                 <span id="semesterBadge" class="semester-badge">載入中...</span>
-                <button id="logoutBtn" class="btn btn-outline-danger btn-sm">登出系統</button>
             </div>
 
             <!-- Tab 切換頁籤 -->
@@ -102,17 +74,29 @@
             <div id="classroomTab" class="tab-content hidden">
                 <div class="query-grid-2">
                     <div class="form-group">
-                        <label for="classroomSelect">選擇專科教室</label>
+                        <label for="classroomSelect">選擇教室</label>
                         <select id="classroomSelect" class="form-control">
                             <option value="">請選擇教室</option>
                         </select>
                     </div>
                 </div>
             </div>
+
+            <!-- 瀏覽計數器展示區塊 (放置於查詢卡片底部) -->
+            <div class="counter-footer">
+                <div class="counter-badge">
+                    <span>當月瀏覽:</span>
+                    <span id="monthCounter" class="count-num">--</span> 次
+                </div>
+                <div class="counter-badge">
+                    <span>累計瀏覽:</span>
+                    <span id="totalCounter" class="count-num">--</span> 次
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- 3. 課表結果展示視圖 -->
+    <!-- 課表結果展示視圖 -->
     <div id="resultView" class="view-container">
         <div class="result-card">
             <!-- 頂部操作列 -->
