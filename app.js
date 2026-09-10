@@ -38,16 +38,6 @@ function initDomReferences() {
 ═══════════════════════════════════════════════════════════ */
 
 /**
- * 初始化計數器：網頁載入時向 GAS 請求目前的累積造訪人數
- */
-/* ═══════════════════════════════════════════════════════════
-    瀏覽統計計數器 (串接 Google Apps Script 後端)
-═══════════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════════
-    瀏覽統計計數器 (串接 Google Apps Script 後端)
-═══════════════════════════════════════════════════════════ */
-
-/**
  * 初始化計數器：網頁載入時向 GAS 請求「當月」與「總累計」人數
  */
 async function initViewCounter() {
@@ -58,9 +48,13 @@ async function initViewCounter() {
         if (!response.ok) throw new Error(`HTTP 錯誤 ${response.status}`);
         
         const data = await response.json();
-        if (data) {
-            updateCounterDisplay(data.month, data.total);
-        }
+        console.log("GAS 回傳資料 (init):", data);
+
+        // 相容性處理：同時支援新版 {month, total} 與舊版 {count}
+        const monthVal = (data && data.month !== undefined) ? data.month : 0;
+        const totalVal = (data && data.total !== undefined) ? data.total : (data ? (data.count || 0) : 0);
+
+        updateCounterDisplay(monthVal, totalVal);
     } catch (err) {
         console.error('讀取雲端計數器失敗:', err);
     }
@@ -73,14 +67,17 @@ async function incrementViewCounter() {
     if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("YOUR_DEPLOYMENT_ID")) return;
 
     try {
-        // 關鍵修正：action 必須為 increment 才能觸發加總
         const response = await fetch(`${GAS_WEB_APP_URL}?action=increment`);
         if (!response.ok) throw new Error(`HTTP 錯誤 ${response.status}`);
         
         const data = await response.json();
-        if (data) {
-            updateCounterDisplay(data.month, data.total);
-        }
+        console.log("GAS 回傳資料 (increment):", data);
+
+        // 相容性處理：同時支援新版 {month, total} 與舊版 {count}
+        const monthVal = (data && data.month !== undefined) ? data.month : 0;
+        const totalVal = (data && data.total !== undefined) ? data.total : (data ? (data.count || 0) : 0);
+
+        updateCounterDisplay(monthVal, totalVal);
     } catch (err) {
         console.error('更新雲端計數器失敗:', err);
     }
@@ -90,18 +87,19 @@ async function incrementViewCounter() {
  * 更新 HTML 畫面上所有計數器位置的數字
  */
 function updateCounterDisplay(monthTotal, overallTotal) {
-    // 1. 更新當月瀏覽 (對應 ID: monthViews)
+    // 1. 更新當月瀏覽 (對應 ID: monthViews 或 class: month-visitor-count)
     const monthEls = document.querySelectorAll('#monthViews, .month-visitor-count');
     monthEls.forEach(el => {
         if (el) el.textContent = Number(monthTotal || 0).toLocaleString();
     });
 
-    // 2. 更新總累計瀏覽 (對應 ID: totalViews, visitorCount)
+    // 2. 更新總累計瀏覽 (對應 ID: totalViews, visitorCount 或 class: total-visitor-count)
     const totalEls = document.querySelectorAll('#totalViews, #visitorCount, .total-visitor-count');
     totalEls.forEach(el => {
         if (el) el.textContent = Number(overallTotal || 0).toLocaleString();
     });
 }
+
 /* ═══════════════════════════════════════════════════════════
     視圖切換
 ═══════════════════════════════════════════════════════════ */
@@ -841,7 +839,7 @@ ${tableHTML}
 ═══════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
     initDomReferences();
-    initViewCounter(); // 網頁初始化時讀取雲端總瀏覽次數
+    initViewCounter(); // 網頁初始化時讀取雲端瀏覽人數
 
     const schoolName = (typeof CONFIG !== 'undefined' && CONFIG.SCHOOL_NAME) ? CONFIG.SCHOOL_NAME : '民雄國中';
     document.title = `${schoolName} 課表查詢`;
