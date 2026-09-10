@@ -7,7 +7,7 @@
 
 /* ── 全域設定 ─────────────────────────────────────────────── */
 // 請替換成你部署好的 Google Apps Script 網址
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzztkjg1m2AknZFJ3Meg-19KseDPlS1TAU-64HqR3nWNrgDWM0Sqow6udieqwzidOwS4w/exec";
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxYlrrYOEd7IjZpsi3UQpVdRzUkkNV34jko23b6WHZHhPqDrCLIyk8AveGLU8ljYUaU8g/exec";
 
 /* ── 全域狀態 ─────────────────────────────────────────────── */
 let scheduleData    = [];   // CSV 全部資料
@@ -40,6 +40,13 @@ function initDomReferences() {
 /**
  * 初始化計數器：網頁載入時向 GAS 請求目前的累積造訪人數
  */
+/* ═══════════════════════════════════════════════════════════
+    瀏覽統計計數器 (串接 Google Apps Script 後端)
+═══════════════════════════════════════════════════════════ */
+
+/**
+ * 初始化計數器：讀取當月與總累積瀏覽數
+ */
 async function initViewCounter() {
     if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("YOUR_DEPLOYMENT_ID")) {
         console.warn("尚未設定 GAS_WEB_APP_URL，無法載入雲端計數器。");
@@ -51,8 +58,8 @@ async function initViewCounter() {
         if (!response.ok) throw new Error(`HTTP 錯誤 ${response.status}`);
         
         const data = await response.json();
-        if (data && data.count !== undefined) {
-            updateCounterDisplay(data.count);
+        if (data && data.total !== undefined) {
+            updateCounterDisplay(data.month, data.total);
         }
     } catch (err) {
         console.error('讀取雲端計數器失敗:', err);
@@ -60,18 +67,18 @@ async function initViewCounter() {
 }
 
 /**
- * 累加計數器：每次執行查詢時呼叫 GAS API 讓 A1 儲存格 +1
+ * 累加計數器：點擊查詢時呼叫，同時增加當月與總累計
  */
 async function incrementViewCounter() {
     if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes("YOUR_DEPLOYMENT_ID")) return;
 
     try {
-        const response = await fetch(`${GAS_WEB_APP_URL}?action=getCounter`);
+        const response = await fetch(`${GAS_WEB_APP_URL}?action=increment`);
         if (!response.ok) throw new Error(`HTTP 錯誤 ${response.status}`);
         
         const data = await response.json();
-        if (data && data.count !== undefined) {
-            updateCounterDisplay(data.count);
+        if (data && data.total !== undefined) {
+            updateCounterDisplay(data.month, data.total);
         }
     } catch (err) {
         console.error('更新雲端計數器失敗:', err);
@@ -81,11 +88,18 @@ async function incrementViewCounter() {
 /**
  * 更新 HTML 畫面上的數字 display
  */
-function updateCounterDisplay(total) {
-    const tEl = document.getElementById('totalViews') || document.getElementById('visitorCount');
-    if (tEl) {
-        tEl.textContent = Number(total).toLocaleString();
-    }
+function updateCounterDisplay(monthTotal, overallTotal) {
+    // 當月瀏覽數 ID (包含頂部標籤與下方載入區)
+    const monthEls = document.querySelectorAll('#monthViews, .month-visitor-count');
+    monthEls.forEach(el => {
+        if (el) el.textContent = Number(monthTotal || 0).toLocaleString();
+    });
+
+    // 總累積瀏覽數 ID
+    const totalEls = document.querySelectorAll('#totalViews, #visitorCount, .total-visitor-count');
+    totalEls.forEach(el => {
+        if (el) el.textContent = Number(overallTotal || 0).toLocaleString();
+    });
 }
 
 /* ═══════════════════════════════════════════════════════════
