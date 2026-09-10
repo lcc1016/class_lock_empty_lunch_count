@@ -169,8 +169,8 @@ function switchTab(tabId) {
 async function loadScheduleData() {
     showLoading(true, '載入課表資料中...');
     try {
-        const response = await fetch('data.json');
-        if (!response.ok) throw new Error('無法讀取 data.json');
+        const response = await fetch('homerooms_11501.json');
+        if (!response.ok) throw new Error('無法讀取 homerooms_11501.json');
         scheduleData = await response.json();
         
         populateDropdowns();
