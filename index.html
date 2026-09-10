@@ -35,6 +35,12 @@
             color: #718096;
             padding: 10px 0;
         }
+        .visitor-box {
+            text-align: center;
+            padding: 12px 0;
+            font-size: 0.9rem;
+            color: #4a5568;
+        }
     </style>
 </head>
 <body>
@@ -75,9 +81,9 @@
             <div class="header-bar" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <div>
                     <span id="currentSemester" class="semester-badge"></span>
-                    <!-- 頂部瀏覽計數器 -->
+                    <!-- 頂部瀏覽計數器 (已將 ID 修正為 monthViews，對應 app.js) -->
                     <div class="visit-stats-badge" style="display: inline-flex;">
-                        <span>🗓️ 當月瀏覽：<strong id="monthlyViews">0</strong> 人次</span>
+                        <span>🗓️ 當月瀏覽：<strong id="monthViews">0</strong> 人次</span>
                         <span>|</span>
                         <span>📈 累計瀏覽：<strong id="totalViews">0</strong> 人次</span>
                     </div>
@@ -170,12 +176,15 @@
         </div>
     </div>
 
+    <!-- 頁尾資訊與備用累積計數器 -->
+    <footer class="app-footer">
+        <div class="visitor-box">
+            👀 累積瀏覽人次：<span id="visitorCount">0</span>
+        </div>
+    </footer>
+
+    <!-- 腳本引入 (維持放在 body 最下方) -->
     <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
-<!-- 範例：放在頁尾的計數器容器 -->
-<!-- 放在頁尾或標頭區域 -->
-<div class="visitor-box">
-  👀 累積瀏覽人次：<span id="visitorCount">載入中...</span>
-</div>

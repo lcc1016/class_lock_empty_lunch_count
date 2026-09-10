@@ -7,7 +7,7 @@
 
 /* ── 全域設定 ─────────────────────────────────────────────── */
 // 請替換成你部署好的 Google Apps Script 網址
-const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxuTSTnTEpeCXR62PAa_EC0J__Y4CX3KcaceWFea8pmr2rbDZXesbaf_h085uVJWjSYIw/exec";
+const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzGWOmnEo8ZUH5OQxetthL1XEZfEOVAajnRL9DGWSSoxRrQBDj02Q65bjMvNN75fEiREg/exec";
 
 /* ── 全域狀態 ─────────────────────────────────────────────── */
 let scheduleData    = [];   // CSV 全部資料
