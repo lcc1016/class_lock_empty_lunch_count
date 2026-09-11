@@ -926,3 +926,23 @@ body { /* 設定網頁主體的整體樣式 */
     color: #2b6cb0;
     font-weight: 700;
 }
+/* 課表內可點擊的教師與班級連結樣式 */
+.clickable-link, 
+.table-responsive td a, 
+.schedule-table td .teacher-link, 
+.schedule-table td .class-link {
+    color: #2b6cb0;              /* 經典連結藍色 */
+    text-decoration: underline;  /* 加上底線指示可點擊 */
+    cursor: pointer;             /* 滑鼠游標變為手勢 */
+    font-weight: 600;            /* 稍微加粗提高辨識度 */
+    transition: color 0.2s ease;
+}
+
+/* 滑鼠懸停或手指觸控時的視覺回饋 */
+.clickable-link:hover, 
+.table-responsive td a:hover, 
+.schedule-table td .teacher-link:hover, 
+.schedule-table td .class-link:hover {
+    color: #1a365d;              /* 深藍色回饋 */
+    text-decoration: underline;
+}
