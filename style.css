@@ -775,12 +775,14 @@ body { /* 設定網頁主體的整體樣式 */
   color: #2b6cb0; /* 經典藍色數字 */
   margin-left: 4px;
 }
-/* 登入頁標頭排版 */
+/* 登入頁標頭排版（置中修復） */
 .login-header {
     display: flex;
     align-items: center;
+    justify-content: center; /* 關鍵：讓校徽與標題整體在卡片內水平置中 */
     gap: 16px;            /* 校徽與標題的間距 */
     margin-bottom: 24px;  /* 與下方學期選擇的間距 */
+    width: 100%;          /* 確保佔滿卡片寬度 */
 }
 
 /* 校徽圖片樣式 */
