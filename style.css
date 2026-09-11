@@ -775,3 +775,36 @@ body { /* 設定網頁主體的整體樣式 */
   color: #2b6cb0; /* 經典藍色數字 */
   margin-left: 4px;
 }
+/* 登入頁標頭排版 */
+.login-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;            /* 校徽與標題的間距 */
+    margin-bottom: 24px;  /* 與下方學期選擇的間距 */
+}
+
+/* 校徽圖片樣式 */
+.school-logo {
+    width: 64px;          /* 依需求調整大小 */
+    height: 64px;
+    object-fit: contain;  /* 保持校徽比例不變形 */
+    flex-shrink: 0;
+}
+
+/* 標題文字區塊 */
+.title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.system-title {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #2d3748;
+}
+
+.system-subtitle {
+    margin: 4px 0 0 0;
+    font-size: 0.875rem;
+    color: #718096;
+}

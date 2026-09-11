@@ -52,28 +52,35 @@
     </div>
 
     <!-- ══ 1. 登入視圖 ══════════════════════════════════════════ -->
-    <div id="loginView" class="view-container active">
-        <div class="login-card">
-            <h1 class="system-title">課表查詢系統</h1>
-            <p class="system-subtitle">請選擇學期並登入查詢</p>
-
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="semesterSelect">學期選擇</label>
-                    <select id="semesterSelect" class="form-control">
-                        <!-- 由 JS 動態填入 -->
-                    </select>
-                </div>
-
-                <div id="loginError" class="error-msg"></div>
-
-                <button type="submit" id="loginBtn" class="btn btn-primary">
-                    <span id="loginSpinner" class="btn-spinner"></span>
-                    進入系統
-                </button>
-            </form>
+<div id="loginView" class="view-container active">
+    <div class="login-card">
+        <!-- 標頭組合區塊 -->
+        <div class="login-header">
+            <img src="logo.png" alt="校徽" class="school-logo">
+            <div class="title-group">
+                <h1 class="system-title">民雄國中課表查詢系統</h1>
+                <p class="system-subtitle">請選擇學期並登入查詢</p>
+            </div>
         </div>
+
+        <form id="loginForm">
+            <!-- 保持原本的表單內容 -->
+            <div class="form-group">
+                <label for="semesterSelect">學期選擇</label>
+                <select id="semesterSelect" class="form-control">
+                    <!-- 由 JS 動態填入 -->
+                </select>
+            </div>
+
+            <div id="loginError" class="error-msg"></div>
+
+            <button type="submit" id="loginBtn" class="btn btn-primary">
+                <span id="loginSpinner" class="btn-spinner"></span>
+                進入系統
+            </button>
+        </form>
     </div>
+</div>
 
     <!-- ══ 2. 查詢面板視圖 ══════════════════════════════════════ -->
     <div id="queryView" class="view-container">
