@@ -88,20 +88,20 @@
     </footer>
 </div>
 
-    <!-- ══ 2. 查詢面板視圖 ══════════════════════════════════════ -->
+<!-- ══ 2. 查詢面板視圖 ══════════════════════════════════════ -->
     <div id="queryView" class="view-container">
         <div class="query-card">
-            <div class="header-bar" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <div>
+            <!-- 頂部工具列 (修復登出按鈕佈局) -->
+            <div class="header-bar">
+                <div class="header-left-info">
                     <span id="currentSemester" class="semester-badge"></span>
-                    <!-- 頂部瀏覽計數器 (已將 ID 修正為 monthViews，對應 app.js) -->
-                    <div class="visit-stats-badge" style="display: inline-flex;">
+                    <div class="visit-stats-badge">
                         <span>🗓️ 當月瀏覽：<strong id="monthViews">0</strong> 人次</span>
                         <span>|</span>
                         <span>📈 累計瀏覽：<strong id="totalViews">0</strong> 人次</span>
                     </div>
                 </div>
-                <button class="btn btn-outline-danger btn-sm" onclick="logout()">登出</button>
+                <button class="btn btn-outline-danger btn-sm logout-btn" onclick="logout()">登出</button>
             </div>
 
             <div class="tab-header" style="margin-top: 15px;">
@@ -154,7 +154,6 @@
             </div>
         </div>
     </div>
-
     <!-- ══ 3. 課表結果視圖 ══════════════════════════════════════ -->
     <div id="resultView" class="view-container">
         <div class="result-card">
